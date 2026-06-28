@@ -1,0 +1,7 @@
+/.idea
+/node_modules
+/vendor
+*.map
+*.zip
+.DS_Store
+/composer.lock
