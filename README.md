@@ -220,17 +220,18 @@ This is the part WordPress developers will care about most. `HookListenerProvide
 lets **any** code react to your typed events using ordinary `add_action()` — even
 code that has never heard of this library.
 
-You give it a closure that turns an event into a hook tag:
+By default, it uses the event's class name as the hook tag, so there's nothing to
+configure:
 
 ```php
 use X3P0\Event\Provider\HookListenerProvider;
 
-$fromHooks = new HookListenerProvider(
-	fn (object $event): string => 'acme/event/' . $event::class
-);
+$fromHooks = new HookListenerProvider();
 ```
 
-Now combine it with your in-memory provider and dispatch as usual:
+The tag is the fully-qualified class name, which is already unique and namespaced
+for correctly-namespaced code. Combine it with your in-memory provider and
+dispatch as usual:
 
 ```php
 $provider   = new AggregateListenerProvider($inMemory, $fromHooks);
@@ -239,19 +240,47 @@ $dispatcher = new EventDispatcher($provider);
 $dispatcher->dispatch(new PostViewed(42));
 ```
 
-And anywhere else — another plugin, a theme's `functions.php` — a developer can
-hook it the familiar way:
+And anywhere else — another plugin, a theme's `functions.php` — a developer hooks
+it with the class name (use `::class` so the namespaced string is exact):
 
 ```php
-add_action('acme/event/' . PostViewed::class, function (PostViewed $event): void {
+add_action(PostViewed::class, function (PostViewed $event): void {
 	// React to the event. You can read or modify $event here too.
 });
 ```
 
+### Mapping events to custom tags
+
+Pass a closure when you want to decide the tag yourself — to publish a **stable,
+readable hook name** that survives renaming the class, or to **opt an event out**
+of the bridge entirely by returning an empty string:
+
+```php
+use X3P0\Event\Provider\HookListenerProvider;
+
+$fromHooks = new HookListenerProvider(
+	fn (object $event): string => match ($event::class) {
+		PostViewed::class       => 'acme/post_viewed',
+		CommentSubmitted::class => 'acme/comment_submitted',
+		InternalAudit::class    => '', // not exposed to add_action()
+		default                 => $event::class,
+	}
+);
+```
+
+Now the public hook name is decoupled from the class, so a third party hooks the
+stable tag and you're free to rename or move `PostViewed` later:
+
+```php
+add_action('acme/post_viewed', function (PostViewed $event): void {
+	// …
+});
+```
+
 Under the hood, when the event is dispatched the provider fires
-`do_action('acme/event/...', $event)`, so WordPress runs every `add_action()`
-callback for that tag, in WordPress's own priority order. If nothing is hooked,
-it costs nothing.
+`do_action($tag, $event)`, so WordPress runs every `add_action()` callback for
+that tag, in WordPress's own priority order. If the tag is empty or nothing is
+hooked, it costs nothing.
 
 > **Note:** `HookListenerProvider` is the only piece of this library that knows
 > about WordPress. Everything else is plain PHP.
@@ -268,11 +297,10 @@ use X3P0\Event\Provider\HookListenerProvider;
 use X3P0\Event\Provider\PriorityListenerProvider;
 use X3P0\Event\EventDispatcher;
 
-// Build the providers.
+// Build the providers. HookListenerProvider uses the event class name as the
+// hook tag by default; pass a closure if you want to map custom tags.
 $inMemory  = new PriorityListenerProvider();
-$fromHooks = new HookListenerProvider(
-	fn (object $event): string => 'acme/event/' . $event::class
-);
+$fromHooks = new HookListenerProvider();
 
 // Combine them and create the dispatcher.
 $dispatcher = new EventDispatcher(
@@ -282,7 +310,7 @@ $dispatcher = new EventDispatcher(
 // Register listeners on the in-memory provider…
 $inMemory->listen(PostViewed::class, fn (PostViewed $e) => /* … */ null);
 
-// …and/or let others hook in with add_action('acme/event/...').
+// …and/or let others hook in with add_action(PostViewed::class, …).
 
 // Then dispatch events from your code.
 $dispatcher->dispatch(new PostViewed(42));
