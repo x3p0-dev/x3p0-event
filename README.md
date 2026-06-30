@@ -46,8 +46,8 @@ right listeners.
 ## Quick start
 
 ```php
-use X3P0\Breadcrumbs\Events\Provider\PriorityListenerProvider;
-use X3P0\Breadcrumbs\Events\EventDispatcher;
+use X3P0\Event\Provider\PriorityListenerProvider;
+use X3P0\Event\EventDispatcher;
 
 // 1. Create a provider (holds your listeners) and a dispatcher (fires events).
 $listeners  = new PriorityListenerProvider();
@@ -116,8 +116,8 @@ event implement `StoppableEvent` and pull in the `Stoppable` trait for a
 ready-made implementation:
 
 ```php
-use X3P0\Breadcrumbs\Events\Stoppable;
-use X3P0\Breadcrumbs\Events\StoppableEvent;
+use X3P0\Event\Stoppable;
+use X3P0\Event\StoppableEvent;
 
 final class CommentSubmitted implements StoppableEvent
 {
@@ -144,7 +144,7 @@ handy for grouping related logic. It declares which events it handles and which
 of its methods handles each:
 
 ```php
-use X3P0\Breadcrumbs\Events\Subscriber;
+use X3P0\Event\Subscriber;
 
 final class AnalyticsSubscriber implements Subscriber
 {
@@ -183,7 +183,7 @@ Everything a subscriber registered can be removed in one call:
 The provider is the part that answers "which listeners apply to this event?"
 There are three, and you can **combine** them. They implement the
 `ListenerProvider` interface and live under the
-`X3P0\Breadcrumbs\Events\Provider` namespace (the interface itself sits at the
+`X3P0\Event\Provider` namespace (the interface itself sits at the
 package root).
 
 ### `PriorityListenerProvider` (the default)
@@ -198,7 +198,7 @@ Wraps several providers and draws listeners from all of them, in the order you
 list them:
 
 ```php
-use X3P0\Breadcrumbs\Events\Provider\AggregateListenerProvider;
+use X3P0\Event\Provider\AggregateListenerProvider;
 
 $provider = new AggregateListenerProvider(
 	$inMemory,     // PriorityListenerProvider
@@ -223,7 +223,7 @@ code that has never heard of this library.
 You give it a closure that turns an event into a hook tag:
 
 ```php
-use X3P0\Breadcrumbs\Events\Provider\HookListenerProvider;
+use X3P0\Event\Provider\HookListenerProvider;
 
 $fromHooks = new HookListenerProvider(
 	fn (object $event): string => 'acme/event/' . $event::class
@@ -263,10 +263,10 @@ it costs nothing.
 No service container or framework is required — you wire it up by hand:
 
 ```php
-use X3P0\Breadcrumbs\Events\Provider\AggregateListenerProvider;
-use X3P0\Breadcrumbs\Events\Provider\HookListenerProvider;
-use X3P0\Breadcrumbs\Events\Provider\PriorityListenerProvider;
-use X3P0\Breadcrumbs\Events\EventDispatcher;
+use X3P0\Event\Provider\AggregateListenerProvider;
+use X3P0\Event\Provider\HookListenerProvider;
+use X3P0\Event\Provider\PriorityListenerProvider;
+use X3P0\Event\EventDispatcher;
 
 // Build the providers.
 $inMemory  = new PriorityListenerProvider();
