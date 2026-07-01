@@ -198,6 +198,55 @@ everything else: priorities, `listenOnce()`, `forget()`, and subscribers (use
 
 ---
 
+## Listeners as classes
+
+A listener can be any callable, and an object with an `__invoke()` method is a
+callable — so a listener can be a class:
+
+```php
+final class NotifyWarehouse
+{
+	public function __invoke(OrderPlaced $event): void { /* … */ }
+}
+
+$dispatcher->listen(OrderPlaced::class, new NotifyWarehouse());
+```
+
+If you'd rather register it by **class name** and have it built only when the
+event fires, implement the `Listener` marker interface and pass the class name:
+
+```php
+use X3P0\Event\Listener;
+
+final class NotifyWarehouse implements Listener
+{
+	public function __invoke(OrderPlaced $event): void { /* … */ }
+}
+
+$dispatcher->listen(OrderPlaced::class, NotifyWarehouse::class);   // resolved lazily
+```
+
+`Listener` is a marker (it declares no method) so your `__invoke()` keeps its
+real, typed parameter. The class is instantiated the first time its event fires
+and reused after that. By default it's built with `new $class()`, so a plain
+listener class needs no constructor arguments; to resolve listeners that have
+dependencies, give the registry a resolver — for example a container:
+
+```php
+use X3P0\Event\Provider\PriorityListenerRegistry;
+
+$registry   = new PriorityListenerRegistry(
+	fn (string $class): object => $container->get($class)
+);
+$dispatcher = new EventDispatcher($registry);
+```
+
+This also works with `listenOnce()`. (A class-name listener is matched by
+identity like any other, so remove it with `forget(OrderPlaced::class)` rather
+than by passing the class name back.)
+
+---
+
 ## Subscribers
 
 A **subscriber** is a single class that registers several listeners at once —
@@ -478,6 +527,7 @@ part shares the same listeners.
 | `ListenerAwareDispatcher`   | A `Dispatcher` that is also a `ListenerRegistry`                                       |
 | `EventDispatcher`           | Dispatches events; also a `listen()` / `subscribe()` facade                            |
 | `ListenerProvider`          | Contract for "which listeners apply to this event?"                                    |
+| `Listener`                  | Marker for a listener class registerable by name and resolved lazily                   |
 | `ListenerRegistry`          | Contract for the write side: `listen()` / `listenOnce()` / `subscribe()` / `subscribeOnce()` / `unsubscribe()` / `forget()` |
 | `PriorityListenerRegistry`  | In-memory registry; priority-ordered; `listen()` / `subscribe()`                       |
 | `AggregateListenerProvider` | Combines several providers into one                                                    |

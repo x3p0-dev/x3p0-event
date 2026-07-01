@@ -24,17 +24,19 @@ namespace X3P0\Event;
 interface ListenerRegistry
 {
 	/**
-	 * Registers a listener for the given event type. A lower priority number
-	 * runs earlier; listeners sharing a priority run in registration order.
+	 * Registers a listener for the given event type. The listener may be any
+	 * callable, or the class name of a `Listener` to resolve lazily when the
+	 * event first fires. A lower priority number runs earlier; listeners
+	 * sharing a priority run in registration order.
 	 */
-	public function listen(string $eventType, callable $listener, int $priority = 0): void;
+	public function listen(string $eventType, callable|string $listener, int $priority = 0): void;
 
 	/**
 	 * Registers a listener that runs at most once: it removes itself before
 	 * it is called, so it fires for the first matching event and never
 	 * again. In every other respect it behaves like `listen()`.
 	 */
-	public function listenOnce(string $eventType, callable $listener, int $priority = 0): void;
+	public function listenOnce(string $eventType, callable|string $listener, int $priority = 0): void;
 
 	/**
 	 * Registers every listener a subscriber declares, so the whole set can

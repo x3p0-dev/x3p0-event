@@ -59,7 +59,7 @@ final class EventDispatcher implements ListenerAwareDispatcher
 	 * need not also hold a reference to the provider. A lower priority number
 	 * runs earlier; listeners sharing a priority run in registration order.
 	 */
-	public function listen(string $eventType, callable $listener, int $priority = 0): void
+	public function listen(string $eventType, callable|string $listener, int $priority = 0): void
 	{
 		$this->registry()->listen($eventType, $listener, $priority);
 	}
@@ -68,7 +68,7 @@ final class EventDispatcher implements ListenerAwareDispatcher
 	 * Registers a listener that runs at most once, as a facade over the
 	 * listener provider.
 	 */
-	public function listenOnce(string $eventType, callable $listener, int $priority = 0): void
+	public function listenOnce(string $eventType, callable|string $listener, int $priority = 0): void
 	{
 		$this->registry()->listenOnce($eventType, $listener, $priority);
 	}

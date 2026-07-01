@@ -13,8 +13,12 @@ declare(strict_types=1);
 
 namespace X3P0\Event\Provider;
 
+use Closure;
+use InvalidArgumentException;
+use LogicException;
 use SplObjectStorage;
 use SplPriorityQueue;
+use X3P0\Event\Listener;
 use X3P0\Event\ListenerProvider;
 use X3P0\Event\ListenerRegistry;
 use X3P0\Event\NamedEvent;
@@ -24,6 +28,7 @@ use X3P0\Event\Subscriber;
  * Listener registry that runs listeners in priority order — the writable
  * provider you register listeners and subscribers on (hence `Registry`, not
  * `Provider`, unlike the read-only providers alongside it).
+ *
  * Listeners are registered against an event type — a class or interface name —
  * and run, lowest priority number first, with ties broken by registration order.
  * An event matches a listener when the event's own class, any parent class, or
@@ -61,28 +66,44 @@ final class PriorityListenerRegistry implements ListenerProvider, ListenerRegist
 	private SplObjectStorage $subscribers;
 
 	/**
-	 * Sets up the subscriber storage.
+	 * Stores the optional resolver used to build listeners registered by
+	 * class name. It receives the class name and returns the instance; when
+	 * none is given, listeners are built with `new $class()`.
+	 *
+	 * @var ?Closure(class-string): object
 	 */
-	public function __construct()
+	private readonly ?Closure $resolver;
+
+	/**
+	 * Sets up the subscriber storage and stores the optional listener resolver.
+	 *
+	 * @param ?Closure(class-string): object $resolver
+	 */
+	public function __construct(?Closure $resolver = null)
 	{
 		$this->subscribers = new SplObjectStorage();
+		$this->resolver = $resolver;
 	}
 
 	/**
 	 * Registers a listener for the given event type. A lower priority number
 	 * runs earlier; listeners sharing a priority run in registration order.
 	 */
-	public function listen(string $eventType, callable $listener, int $priority = 0): void
+	public function listen(string $eventType, callable|string $listener, int $priority = 0): void
 	{
-		$this->add($eventType, $listener, $priority);
+		$this->add($eventType, $this->toCallable($listener), $priority);
 	}
 
 	/**
 	 * @inheritDoc
 	 */
-	public function listenOnce(string $eventType, callable $listener, int $priority = 0): void
+	public function listenOnce(string $eventType, callable|string $listener, int $priority = 0): void
 	{
-		$this->add($eventType, $this->onceListener($eventType, $listener), $priority);
+		$this->add(
+			$eventType,
+			$this->onceListener($eventType, $this->toCallable($listener)),
+			$priority
+		);
 	}
 
 	/**
@@ -104,7 +125,7 @@ final class PriorityListenerRegistry implements ListenerProvider, ListenerRegist
 	}
 
 	/**
-	 * Removes every listener previously registered by the given subscriber.
+	 * @inheritDoc
 	 */
 	public function unsubscribe(Subscriber $subscriber): void
 	{
@@ -149,9 +170,10 @@ final class PriorityListenerRegistry implements ListenerProvider, ListenerRegist
 
 		foreach ($this->matchingTypes($event) as $type) {
 			foreach ($this->listeners[$type] ?? [] as $serial => $registered) {
-				// The queue dequeues the highest priority first, so both
-				// values are negated: the lowest priority number comes out
-				// first, and the earliest serial wins on ties.
+				// The queue dequeues the highest priority first,
+				// so both values are negated: the lowest priority
+				// number comes out first, and the earliest serial
+				// wins on ties.
 				$queue->insert($registered['callable'], [
 					-$registered['priority'],
 					-$serial
@@ -192,6 +214,52 @@ final class PriorityListenerRegistry implements ListenerProvider, ListenerRegist
 	}
 
 	/**
+	 * Normalizes a registered listener to a callable. A callable is returned
+	 * as-is; a `Listener` class name is turned into a closure that resolves the
+	 * class the first time it runs (lazily, then cached) and invokes it. Any
+	 * other string is rejected.
+	 */
+	private function toCallable(callable|string $listener): callable
+	{
+		if (is_string($listener) && is_a($listener, Listener::class, true)) {
+			$instance = null;
+
+			return function (object $event) use ($listener, &$instance): void {
+				$instance ??= $this->resolveListener($listener);
+				$instance($event);
+			};
+		}
+
+		if (! is_callable($listener)) {
+			throw new InvalidArgumentException(
+				'Listener must be a callable or the class name of a ' . Listener::class . '.'
+			);
+		}
+
+		return $listener;
+	}
+
+	/**
+	 * Builds a listener registered by class name and returns it, ensuring the
+	 * result is invokable. Uses the resolver when one was given, otherwise
+	 * `new $class()`.
+	 *
+	 * @param class-string $class
+	 */
+	private function resolveListener(string $class): callable
+	{
+		$listener = $this->resolver ? ($this->resolver)($class) : new $class();
+
+		if (! is_callable($listener)) {
+			throw new LogicException(
+				'A ' . Listener::class . ' must be invokable — define an __invoke() method.'
+			);
+		}
+
+		return $listener;
+	}
+
+	/**
 	 * Wraps a listener so it removes itself before it runs — the shared
 	 * basis for `listenOnce()` and `subscribeOnce()`. Removing it first
 	 * means it fires at most once even if it (or something it calls)
@@ -200,9 +268,9 @@ final class PriorityListenerRegistry implements ListenerProvider, ListenerRegist
 	 */
 	private function onceListener(string $eventType, callable $listener): callable
 	{
-		// Assigned and returned in a single statement so the closure can still
-		// capture itself by reference (`&$once`) — it needs its own identity to
-		// forget the exact callable stored.
+		// Assigned and returned in a single statement so the closure
+		// can still capture itself by reference (`&$once`) — it needs
+		// its own identity to forget the exact callable stored.
 		return $once = function (object $event) use (&$once, $eventType, $listener): void {
 			$this->forget($eventType, $once);
 			$listener($event);
