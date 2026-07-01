@@ -337,11 +337,30 @@ remove it. (Subscribers are removed as a group with `unsubscribe()`, above.)
 
 ---
 
+## Checking for listeners
+
+`hasListeners()` reports whether anything is registered for an event type —
+useful for skipping work, like building an expensive event, when nothing is
+listening:
+
+```php
+if ($dispatcher->hasListeners(ReportGenerated::class)) {
+	$dispatcher->dispatch(new ReportGenerated($this->buildExpensiveReport()));
+}
+```
+
+It respects the same matching as dispatch, so a listener registered against a
+base class or interface counts for its subtypes. Pass a named event's name to
+check listeners registered under that name. (It reflects listeners on the
+registry, not the WordPress hook bridge — for that, use `has_action()`.)
+
+---
+
 ## Registering through the dispatcher
 
 For convenience, the dispatcher doubles as a facade over its provider — you can
 `listen()`, `listenOnce()`, `subscribe()`, `subscribeOnce()`, `unsubscribe()`,
-and `forget()` on it directly, so
+`forget()`, and `hasListeners()` on it directly, so
 code that holds the dispatcher needn't also hold a reference to the provider:
 
 ```php
@@ -546,7 +565,7 @@ part shares the same listeners.
 | `ListenerProvider`          | Contract for "which listeners apply to this event?"                                    |
 | `Listener`                  | Marker for a listener class registerable by name and resolved lazily                   |
 | `ListenerPriority`          | Enum of named priorities (`First` / `Normal` / `Last`) for `listen()`                  |
-| `ListenerRegistry`          | Contract for the write side: `listen()` / `listenOnce()` / `subscribe()` / `subscribeOnce()` / `unsubscribe()` / `forget()` |
+| `ListenerRegistry`          | Contract for the write side: `listen()` / `listenOnce()` / `subscribe()` / `subscribeOnce()` / `unsubscribe()` / `forget()` / `hasListeners()` |
 | `PriorityListenerRegistry`  | In-memory registry; priority-ordered; `listen()` / `subscribe()`                       |
 | `AggregateListenerProvider` | Combines several providers into one                                                    |
 | `HookListenerProvider`      | Bridges events to WordPress `add_action()` hooks                                       |

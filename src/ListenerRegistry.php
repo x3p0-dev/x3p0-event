@@ -15,11 +15,12 @@ namespace X3P0\Event;
 
 /**
  * Contract for the write side of the listener system: registering listeners and
- * subscribers, and removing them again. It is the counterpart to the read-only
- * `ListenerProvider`, which only answers which listeners apply to an event. A
- * provider may implement both to be the single place listeners are stored, or
- * just `ListenerProvider` when it sources listeners from elsewhere (such as the
- * WordPress hook bridge) and accepts no registrations.
+ * subscribers, removing them again, and reporting what is registered. It is the
+ * counterpart to the read-only `ListenerProvider`, which only answers which
+ * listeners apply to an event. A provider may implement both to be the single
+ * place listeners are stored, or just `ListenerProvider` when it sources
+ * listeners from elsewhere (such as the WordPress hook bridge) and accepts no
+ * registrations.
  */
 interface ListenerRegistry
 {
@@ -31,6 +32,16 @@ interface ListenerRegistry
 	 * integer or a `ListenerPriority` case.
 	 */
 	public function listen(string $eventType, callable|string $listener, int|ListenerPriority $priority = 0): void;
+
+	/**
+	 * Reports whether any registered listener would match the given event type —
+	 * its own class or interface, or any parent class or implemented interface.
+	 * Handy for skipping work, such as building an expensive event, when nothing
+	 * is listening. Pass a named event's name to check listeners registered under
+	 * that name. This reflects only listeners on the registry, not the WordPress
+	 * hook bridge.
+	 */
+	public function hasListeners(string $eventType): bool;
 
 	/**
 	 * Registers a listener that runs at most once: it removes itself before

@@ -190,6 +190,20 @@ final class PriorityListenerRegistry implements ListenerProvider, ListenerRegist
 	}
 
 	/**
+	 * @inheritDoc
+	 */
+	public function hasListeners(string $eventType): bool
+	{
+		foreach ($this->typesForClass($eventType) as $type) {
+			if (! empty($this->listeners[$type])) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
 	 * Registers every handler a subscriber declares and records the serials
 	 * so `unsubscribe()` can remove them together. When `$once` is true, each
 	 * handler is wrapped to run at most once, exactly as `listenOnce()` does.
@@ -300,19 +314,15 @@ final class PriorityListenerRegistry implements ListenerProvider, ListenerRegist
 	}
 
 	/**
-	 * Returns the event types a listener may be registered against to match the
-	 * given event: its own class, every parent class, and every implemented
-	 * interface.
+	 * Returns every key a listener may be registered against to match the given
+	 * event: its class hierarchy (via `typesForClass()`) plus, for a
+	 * `NamedEvent`, its event name.
 	 *
 	 * @return array<int, string>
 	 */
 	private function matchingTypes(object $event): array
 	{
-		$types = [
-			$event::class,
-			...array_values(class_parents($event)),
-			...array_values(class_implements($event))
-		];
+		$types = $this->typesForClass($event::class);
 
 		// A named event contributes its name as an extra key, so listeners
 		// registered against that string match alongside the class-based ones.
@@ -321,5 +331,26 @@ final class PriorityListenerRegistry implements ListenerProvider, ListenerRegist
 		}
 
 		return $types;
+	}
+
+	/**
+	 * Returns the keys a listener may be registered against to match the given
+	 * type: the class itself plus every parent class and implemented interface.
+	 * A string that is not a loaded class or interface (such as a named event's
+	 * name) is treated as an opaque key with no hierarchy.
+	 *
+	 * @return array<int, string>
+	 */
+	private function typesForClass(string $class): array
+	{
+		if (! class_exists($class) && ! interface_exists($class)) {
+			return [$class];
+		}
+
+		return [
+			$class,
+			...array_values(class_parents($class) ?: []),
+			...array_values(class_implements($class) ?: [])
+		];
 	}
 }

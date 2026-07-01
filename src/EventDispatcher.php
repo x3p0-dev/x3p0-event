@@ -65,6 +65,15 @@ final class EventDispatcher implements ListenerAwareDispatcher
 	}
 
 	/**
+	 * Reports whether the listener provider has any listener for the given event
+	 * type, as a facade over it.
+	 */
+	public function hasListeners(string $eventType): bool
+	{
+		return $this->registry()->hasListeners($eventType);
+	}
+
+	/**
 	 * Registers a listener that runs at most once, as a facade over the
 	 * listener provider.
 	 */
