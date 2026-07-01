@@ -113,6 +113,24 @@ $dispatcher->listen(PostViewed::class, $runsLast, 20);       // higher runs late
 
 ---
 
+## One-time listeners
+
+A listener registered with `listenOnce()` fires for the first matching event and
+then removes itself — handy for one-shot work that should react to an event but
+never again:
+
+```php
+$dispatcher->listenOnce(BootCompleted::class, function (BootCompleted $event): void {
+	// runs on the first BootCompleted, then unregisters itself
+});
+```
+
+It takes the same priority argument as `listen()` and is otherwise identical. The
+listener is removed *before* it runs, so it fires at most once even if it — or
+something it calls — dispatches the same event again.
+
+---
+
 ## Stoppable events
 
 Sometimes one listener should be able to stop the rest from running. Make the
@@ -206,7 +224,8 @@ remove it. (Subscribers are removed as a group with `unsubscribe()`, above.)
 ## Registering through the dispatcher
 
 For convenience, the dispatcher doubles as a facade over its provider — you can
-`listen()`, `subscribe()`, `unsubscribe()`, and `forget()` on it directly, so
+`listen()`, `listenOnce()`, `subscribe()`, `unsubscribe()`, and `forget()` on it
+directly, so
 code that holds the dispatcher needn't also hold a reference to the provider:
 
 ```php
@@ -409,7 +428,7 @@ part shares the same listeners.
 | `ListenerAwareDispatcher`   | A `Dispatcher` that is also a `ListenerRegistry`                                       |
 | `EventDispatcher`           | Dispatches events; also a `listen()` / `subscribe()` facade                            |
 | `ListenerProvider`          | Contract for "which listeners apply to this event?"                                    |
-| `ListenerRegistry`          | Contract for the write side: `listen()` / `subscribe()` / `unsubscribe()` / `forget()` |
+| `ListenerRegistry`          | Contract for the write side: `listen()` / `listenOnce()` / `subscribe()` / `unsubscribe()` / `forget()` |
 | `PriorityListenerRegistry`  | In-memory registry; priority-ordered; `listen()` / `subscribe()`                       |
 | `AggregateListenerProvider` | Combines several providers into one                                                    |
 | `HookListenerProvider`      | Bridges events to WordPress `add_action()` hooks                                       |

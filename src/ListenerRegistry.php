@@ -30,6 +30,13 @@ interface ListenerRegistry
 	public function listen(string $eventType, callable $listener, int $priority = 0): void;
 
 	/**
+	 * Registers a listener that runs at most once: it removes itself before
+	 * it is called, so it fires for the first matching event and never
+	 * again. In every other respect it behaves like `listen()`.
+	 */
+	public function listenOnce(string $eventType, callable $listener, int $priority = 0): void;
+
+	/**
 	 * Registers every listener a subscriber declares, so the whole set can
 	 * be removed together with `unsubscribe()`.
 	 */

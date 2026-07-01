@@ -65,6 +65,15 @@ final class EventDispatcher implements ListenerAwareDispatcher
 	}
 
 	/**
+	 * Registers a listener that runs at most once, as a facade over the
+	 * listener provider.
+	 */
+	public function listenOnce(string $eventType, callable $listener, int $priority = 0): void
+	{
+		$this->registry()->listenOnce($eventType, $listener, $priority);
+	}
+
+	/**
 	 * Registers every listener a subscriber declares, as a facade over the
 	 * listener provider.
 	 */

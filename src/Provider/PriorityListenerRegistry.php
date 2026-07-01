@@ -76,6 +76,24 @@ final class PriorityListenerRegistry implements ListenerProvider, ListenerRegist
 	}
 
 	/**
+	 * @inheritDoc
+	 */
+	public function listenOnce(string $eventType, callable $listener, int $priority = 0): void
+	{
+		// Wrap the listener so it unregisters itself before running.
+		// Removing it first (rather than after) means it fires at most
+		// once even if the listener dispatches the same event again,
+		// and even if it throws. The `&$once` reference lets the closure
+		// forget the exact callable stored.
+		$once = function (object $event) use (&$once, $eventType, $listener): void {
+			$this->forget($eventType, $once);
+			$listener($event);
+		};
+
+		$this->add($eventType, $once, $priority);
+	}
+
+	/**
 	 * Registers every listener a subscriber declares and remembers them so they
 	 * can be removed together. A handler may be a method name or an array with a
 	 * `method` key and an optional `priority` key.
