@@ -43,6 +43,14 @@ interface ListenerRegistry
 	public function subscribe(Subscriber $subscriber): void;
 
 	/**
+	 * Registers a subscriber's listeners so each one runs at most once,
+	 * removing itself after it fires. Every declared handler is independent —
+	 * one firing does not remove the others. As with `subscribe()`, the whole
+	 * set can still be removed early with `unsubscribe()`.
+	 */
+	public function subscribeOnce(Subscriber $subscriber): void;
+
+	/**
 	 * Removes every listener previously registered by the given subscriber.
 	 */
 	public function unsubscribe(Subscriber $subscriber): void;

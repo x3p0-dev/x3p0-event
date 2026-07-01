@@ -198,6 +198,17 @@ $dispatcher->listen(CommentSubmitted::class, [$sub, 'onComment'], 5);   // prior
 Everything a subscriber registered can be removed in one call:
 `$dispatcher->unsubscribe($subscriber)`.
 
+To register a subscriber whose listeners each fire **at most once**, use
+`subscribeOnce()`. Every declared handler removes itself after it runs, and they
+are independent — one firing doesn't disarm the others:
+
+```php
+$dispatcher->subscribeOnce(new AnalyticsSubscriber());
+```
+
+You can still remove the whole set early with `unsubscribe()` before any of them
+have fired.
+
 ---
 
 ## Removing listeners
@@ -224,8 +235,8 @@ remove it. (Subscribers are removed as a group with `unsubscribe()`, above.)
 ## Registering through the dispatcher
 
 For convenience, the dispatcher doubles as a facade over its provider — you can
-`listen()`, `listenOnce()`, `subscribe()`, `unsubscribe()`, and `forget()` on it
-directly, so
+`listen()`, `listenOnce()`, `subscribe()`, `subscribeOnce()`, `unsubscribe()`,
+and `forget()` on it directly, so
 code that holds the dispatcher needn't also hold a reference to the provider:
 
 ```php
@@ -428,7 +439,7 @@ part shares the same listeners.
 | `ListenerAwareDispatcher`   | A `Dispatcher` that is also a `ListenerRegistry`                                       |
 | `EventDispatcher`           | Dispatches events; also a `listen()` / `subscribe()` facade                            |
 | `ListenerProvider`          | Contract for "which listeners apply to this event?"                                    |
-| `ListenerRegistry`          | Contract for the write side: `listen()` / `listenOnce()` / `subscribe()` / `unsubscribe()` / `forget()` |
+| `ListenerRegistry`          | Contract for the write side: `listen()` / `listenOnce()` / `subscribe()` / `subscribeOnce()` / `unsubscribe()` / `forget()` |
 | `PriorityListenerRegistry`  | In-memory registry; priority-ordered; `listen()` / `subscribe()`                       |
 | `AggregateListenerProvider` | Combines several providers into one                                                    |
 | `HookListenerProvider`      | Bridges events to WordPress `add_action()` hooks                                       |

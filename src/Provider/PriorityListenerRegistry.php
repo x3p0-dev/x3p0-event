@@ -80,40 +80,25 @@ final class PriorityListenerRegistry implements ListenerProvider, ListenerRegist
 	 */
 	public function listenOnce(string $eventType, callable $listener, int $priority = 0): void
 	{
-		// Wrap the listener so it unregisters itself before running.
-		// Removing it first (rather than after) means it fires at most
-		// once even if the listener dispatches the same event again,
-		// and even if it throws. The `&$once` reference lets the closure
-		// forget the exact callable stored.
-		$once = function (object $event) use (&$once, $eventType, $listener): void {
-			$this->forget($eventType, $once);
-			$listener($event);
-		};
-
-		$this->add($eventType, $once, $priority);
+		$this->add($eventType, $this->onceListener($eventType, $listener), $priority);
 	}
 
 	/**
-	 * Registers every listener a subscriber declares and remembers them so they
-	 * can be removed together. A handler may be a method name or an array with a
-	 * `method` key and an optional `priority` key.
+	 * Registers every listener a subscriber declares and remembers them so
+	 * they can be removed together. A handler may be a method name or an
+	 * array with a `method` key and an optional `priority` key.
 	 */
 	public function subscribe(Subscriber $subscriber): void
 	{
-		$records = [];
+		$this->subscribeEach($subscriber, false);
+	}
 
-		foreach ($subscriber->getSubscribedEvents() as $eventType => $handler) {
-			[$method, $priority] = is_array($handler)
-				? [$handler['method'], $handler['priority'] ?? 0]
-				: [$handler, 0];
-
-			$records[] = [
-				'type'   => $eventType,
-				'serial' => $this->add($eventType, [$subscriber, $method], $priority)
-			];
-		}
-
-		$this->subscribers[$subscriber] = $records;
+	/**
+	 * @inheritDoc
+	 */
+	public function subscribeOnce(Subscriber $subscriber): void
+	{
+		$this->subscribeEach($subscriber, true);
 	}
 
 	/**
@@ -173,6 +158,53 @@ final class PriorityListenerRegistry implements ListenerProvider, ListenerRegist
 		}
 
 		yield from $queue;
+	}
+
+	/**
+	 * Registers every handler a subscriber declares and records the serials
+	 * so `unsubscribe()` can remove them together. When `$once` is true, each
+	 * handler is wrapped to run at most once, exactly as `listenOnce()` does.
+	 */
+	private function subscribeEach(Subscriber $subscriber, bool $once): void
+	{
+		$records = [];
+
+		foreach ($subscriber->getSubscribedEvents() as $eventType => $handler) {
+			[$method, $priority] = is_array($handler)
+				? [$handler['method'], $handler['priority'] ?? 0]
+				: [$handler, 0];
+
+			$listener = [$subscriber, $method];
+
+			$records[] = [
+				'type'   => $eventType,
+				'serial' => $this->add(
+					$eventType,
+					$once ? $this->onceListener($eventType, $listener) : $listener,
+					$priority
+				)
+			];
+		}
+
+		$this->subscribers[$subscriber] = $records;
+	}
+
+	/**
+	 * Wraps a listener so it removes itself before it runs — the shared
+	 * basis for `listenOnce()` and `subscribeOnce()`. Removing it first
+	 * means it fires at most once even if it (or something it calls)
+	 * dispatches the same event again, and even if it throws. The `&$once`
+	 * reference lets the closure forget the exact callable stored.
+	 */
+	private function onceListener(string $eventType, callable $listener): callable
+	{
+		// Assigned and returned in a single statement so the closure can still
+		// capture itself by reference (`&$once`) — it needs its own identity to
+		// forget the exact callable stored.
+		return $once = function (object $event) use (&$once, $eventType, $listener): void {
+			$this->forget($eventType, $once);
+			$listener($event);
+		};
 	}
 
 	/**

@@ -83,6 +83,15 @@ final class EventDispatcher implements ListenerAwareDispatcher
 	}
 
 	/**
+	 * Registers a subscriber whose listeners each run at most once, as a facade
+	 * over the listener provider.
+	 */
+	public function subscribeOnce(Subscriber $subscriber): void
+	{
+		$this->registry()->subscribeOnce($subscriber);
+	}
+
+	/**
 	 * Removes every listener previously registered by the given subscriber,
 	 * as a facade over the listener provider.
 	 */
