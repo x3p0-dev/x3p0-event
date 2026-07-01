@@ -224,11 +224,14 @@ $dispatcher->dispatch(new PostViewed(42));
 These delegate to the underlying provider, so they need a provider that accepts
 registrations — one implementing `ListenerRegistry`. The default provider a
 bare `new EventDispatcher()` creates is a `PriorityListenerProvider`, which is
-exactly that, so the facade works out of the box. When the dispatcher wraps an
-`AggregateListenerProvider`, registrations are forwarded to the first child that
-accepts them, so the combined set-up below works the same way. Only a read-only
-provider you supply deliberately (a lone `HookListenerProvider`, say) makes these
-methods throw a `LogicException`.
+exactly that, so the facade works out of the box. It also works when you pass a
+registry provider yourself (`new EventDispatcher(new PriorityListenerProvider())`).
+
+The facade throws a `LogicException` when the dispatcher's provider does *not*
+accept registrations — a lone `HookListenerProvider`, or an
+`AggregateListenerProvider` (which is read-only; see below). In the combined
+set-up, register on the concrete `PriorityListenerProvider` directly rather than
+through the dispatcher.
 
 The dispatcher and the provider stay separate types — this is only sugar. You can
 always register on the provider directly, which is the only option when you hold
@@ -261,10 +264,14 @@ also fires for any event that extends or implements it.
 ### `AggregateListenerProvider` (combine providers)
 
 Wraps several providers and draws listeners from all of them, in the order you
-list them:
+list them. It is **read-only** — it combines what its children *provide* but
+accepts no registrations itself (mirroring PSR-14's own aggregation model). You
+register on the concrete provider; the aggregate reads through to it.
 
 ```php
 use X3P0\Event\Provider\AggregateListenerProvider;
+
+$inMemory = new PriorityListenerProvider();
 
 $provider = new AggregateListenerProvider(
 	$inMemory,     // PriorityListenerProvider
@@ -272,6 +279,9 @@ $provider = new AggregateListenerProvider(
 );
 
 $dispatcher = new EventDispatcher($provider);
+
+// Register on the concrete provider, not the aggregate or the dispatcher.
+$inMemory->listen(PostViewed::class, $listener);
 ```
 
 ### `HookListenerProvider` (talk to WordPress hooks)
