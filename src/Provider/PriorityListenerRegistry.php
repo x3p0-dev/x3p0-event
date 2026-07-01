@@ -17,6 +17,7 @@ use SplObjectStorage;
 use SplPriorityQueue;
 use X3P0\Event\ListenerProvider;
 use X3P0\Event\ListenerRegistry;
+use X3P0\Event\NamedEvent;
 use X3P0\Event\Subscriber;
 
 /**
@@ -27,7 +28,8 @@ use X3P0\Event\Subscriber;
  * and run, lowest priority number first, with ties broken by registration order.
  * An event matches a listener when the event's own class, any parent class, or
  * any implemented interface equals the registered type, so a listener on a base
- * type fires for every subtype.
+ * type fires for every subtype. A `NamedEvent` additionally matches listeners
+ * registered against the string its `eventName()` returns.
  *
  * Two SPL structures do the heavy lifting: an `SplPriorityQueue` orders the
  * matching listeners at dispatch time, and an `SplObjectStorage` remembers which
@@ -231,10 +233,18 @@ final class PriorityListenerRegistry implements ListenerProvider, ListenerRegist
 	 */
 	private function matchingTypes(object $event): array
 	{
-		return [
+		$types = [
 			$event::class,
 			...array_values(class_parents($event)),
 			...array_values(class_implements($event))
 		];
+
+		// A named event contributes its name as an extra key, so listeners
+		// registered against that string match alongside the class-based ones.
+		if ($event instanceof NamedEvent) {
+			$types[] = $event->eventName();
+		}
+
+		return $types;
 	}
 }

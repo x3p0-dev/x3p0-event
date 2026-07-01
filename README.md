@@ -159,6 +159,45 @@ The dispatcher checks `isPropagationStopped()` before calling each listener.
 
 ---
 
+## Named events
+
+An event is matched by its class, but it can *also* expose a string name so
+listeners may register against a friendly identifier as well as (or instead of)
+the class. Implement `NamedEvent`, and back it with a `NAME` constant using the `Named` trait:
+
+```php
+use X3P0\Event\Named;
+use X3P0\Event\NamedEvent;
+
+final class OrderPlaced implements NamedEvent
+{
+	use Named;
+
+	public const NAME = 'order.placed';
+
+	public function __construct(public readonly int $orderId) {}
+}
+```
+
+Now the event matches listeners registered under either key:
+
+```php
+$dispatcher->listen(OrderPlaced::class, $byClass);   // by class, as always
+$dispatcher->listen(OrderPlaced::NAME,  $byName);    // by name ('order.placed')
+
+$dispatcher->dispatch(new OrderPlaced(42));          // both listeners run
+```
+
+You still dispatch an **object** — the name is an *additional* routing key the
+event opts into, not a replacement for the typed event, so listeners still get
+the real object and its typed data. And because the name lives on the class as a
+constant, registering with `OrderPlaced::NAME` keeps autocomplete, "find usages,"
+and refactoring working — unlike a bare string. The name key composes with
+everything else: priorities, `listenOnce()`, `forget()`, and subscribers (use
+`OrderPlaced::NAME` as a `getSubscribedEvents()` key).
+
+---
+
 ## Subscribers
 
 A **subscriber** is a single class that registers several listeners at once —
@@ -445,4 +484,6 @@ part shares the same listeners.
 | `HookListenerProvider`      | Bridges events to WordPress `add_action()` hooks                                       |
 | `StoppableEvent`            | Contract for an event whose propagation can be stopped                                 |
 | `Stoppable`                 | Trait with a ready-made `StoppableEvent` implementation                                |
+| `NamedEvent`                | Contract for an event that also matches by a string name                               |
+| `Named`                     | Trait implementing `NamedEvent` from a `NAME` class constant                           |
 | `Subscriber`                | Contract for a class that registers many listeners at once                             |
