@@ -47,7 +47,7 @@ final class CallableListenerProvider implements ListenerProvider
 	 */
 	public function __construct(callable $resolve)
 	{
-		$this->resolve = Closure::fromCallable($resolve);
+		$this->resolve = $resolve(...);
 	}
 
 	/**
