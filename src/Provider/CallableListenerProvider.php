@@ -19,7 +19,7 @@ use X3P0\Event\ListenerProvider;
 /**
  * Adapts any callable into a listener provider: the callable is handed the event
  * and returns the listeners for it. This is the read-only counterpart to
- * `PriorityListenerProvider` — where that one is a registry you write listeners
+ * `PriorityListenerRegistry` — where that one is a registry you write listeners
  * into, this one sources them from wherever the callable looks, so the listeners
  * live somewhere else entirely (a DI container tag, a config array, attribute
  * scanning, another event system).

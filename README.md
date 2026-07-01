@@ -49,8 +49,8 @@ right listeners.
 use X3P0\Event\EventDispatcher;
 
 // 1. A dispatcher fires events — and lets you register the listeners for them.
-//    With no arguments it sets up its own listener registry, so there's nothing
-//    else to wire. (Pass your own provider when you need to; see below.)
+// With no arguments it sets up its own listener registry, so there's nothing
+// else to wire. (Pass your own provider when you need to; see below.)
 $dispatcher = new EventDispatcher();
 
 // 2. An event is just a class. Give it whatever data it needs.
@@ -223,14 +223,14 @@ $dispatcher->dispatch(new PostViewed(42));
 
 These delegate to the underlying provider, so they need a provider that accepts
 registrations — one implementing `ListenerRegistry`. The default provider a
-bare `new EventDispatcher()` creates is a `PriorityListenerProvider`, which is
+bare `new EventDispatcher()` creates is a `PriorityListenerRegistry`, which is
 exactly that, so the facade works out of the box. It also works when you pass a
-registry provider yourself (`new EventDispatcher(new PriorityListenerProvider())`).
+registry provider yourself (`new EventDispatcher(new PriorityListenerRegistry())`).
 
 The facade throws a `LogicException` when the dispatcher's provider does *not*
 accept registrations — a lone `HookListenerProvider`, or an
 `AggregateListenerProvider` (which is read-only; see below). In the combined
-set-up, register on the concrete `PriorityListenerProvider` directly rather than
+set-up, register on the concrete `PriorityListenerRegistry` directly rather than
 through the dispatcher.
 
 The dispatcher and the provider stay separate types — this is only sugar. You can
@@ -250,37 +250,41 @@ that accepts registrations, or they throw.
 ## Where listeners come from: providers
 
 The provider is the part that answers "which listeners apply to this event?"
-There are three, and you can **combine** them. They implement the
-`ListenerProvider` interface and live under the
-`X3P0\Event\Provider` namespace (the interface itself sits at the
-package root).
+There are three, and you can **combine** them. They all implement the
+`ListenerProvider` interface and live under the `X3P0\Event\Provider` namespace
+(the interface itself sits at the package root).
 
-### `PriorityListenerProvider` (the default)
+The name tells you which way each one goes: a **`…Registry`** is writable — you
+register listeners on it — while a read-only **`…Provider`** only supplies
+listeners it sources elsewhere. So of the three, only `PriorityListenerRegistry`
+accepts registrations.
 
-An in-memory registry. This is what you register listeners and subscribers on,
-with priority ordering. A listener registered against a base class or interface
-also fires for any event that extends or implements it.
+### `PriorityListenerRegistry` (the default)
+
+An in-memory, writable registry. This is what you register listeners and
+subscribers on, with priority ordering. A listener registered against a base
+class or interface also fires for any event that extends or implements it.
 
 ### `AggregateListenerProvider` (combine providers)
 
 Wraps several providers and draws listeners from all of them, in the order you
 list them. It is **read-only** — it combines what its children *provide* but
 accepts no registrations itself (mirroring PSR-14's own aggregation model). You
-register on the concrete provider; the aggregate reads through to it.
+register on the concrete registry; the aggregate reads through to it.
 
 ```php
 use X3P0\Event\Provider\AggregateListenerProvider;
 
-$inMemory = new PriorityListenerProvider();
+$inMemory = new PriorityListenerRegistry();
 
 $provider = new AggregateListenerProvider(
-	$inMemory,     // PriorityListenerProvider
+	$inMemory,     // PriorityListenerRegistry
 	$fromHooks     // HookListenerProvider (below)
 );
 
 $dispatcher = new EventDispatcher($provider);
 
-// Register on the concrete provider, not the aggregate or the dispatcher.
+// Register on the concrete registry, not the aggregate or the dispatcher.
 $inMemory->listen(PostViewed::class, $listener);
 ```
 
@@ -370,12 +374,12 @@ No service container or framework is required — you wire it up by hand:
 ```php
 use X3P0\Event\Provider\AggregateListenerProvider;
 use X3P0\Event\Provider\HookListenerProvider;
-use X3P0\Event\Provider\PriorityListenerProvider;
+use X3P0\Event\Provider\PriorityListenerRegistry;
 use X3P0\Event\EventDispatcher;
 
 // Build the providers. HookListenerProvider uses the event class name as the
 // hook tag by default; pass a closure if you want to map custom tags.
-$inMemory  = new PriorityListenerProvider();
+$inMemory  = new PriorityListenerRegistry();
 $fromHooks = new HookListenerProvider();
 
 // Combine them and create the dispatcher.
@@ -399,16 +403,16 @@ part shares the same listeners.
 
 ## Class reference
 
-| Class / interface           | Role                                                             |
-|-----------------------------|------------------------------------------------------------------|
-| `Dispatcher`                | Minimal, PSR-14-style contract: just `dispatch()`                |
-| `ListenerAwareDispatcher`   | A `Dispatcher` that is also a `ListenerRegistry`                  |
-| `EventDispatcher`           | Dispatches events; also a `listen()` / `subscribe()` facade       |
-| `ListenerProvider`          | Contract for "which listeners apply to this event?"              |
+| Class / interface           | Role                                                                                   |
+|-----------------------------|----------------------------------------------------------------------------------------|
+| `Dispatcher`                | Minimal, PSR-14-style contract: just `dispatch()`                                      |
+| `ListenerAwareDispatcher`   | A `Dispatcher` that is also a `ListenerRegistry`                                       |
+| `EventDispatcher`           | Dispatches events; also a `listen()` / `subscribe()` facade                            |
+| `ListenerProvider`          | Contract for "which listeners apply to this event?"                                    |
 | `ListenerRegistry`          | Contract for the write side: `listen()` / `subscribe()` / `unsubscribe()` / `forget()` |
-| `PriorityListenerProvider`  | In-memory registry; priority-ordered; `listen()` / `subscribe()` |
-| `AggregateListenerProvider` | Combines several providers into one                              |
-| `HookListenerProvider`      | Bridges events to WordPress `add_action()` hooks                 |
-| `StoppableEvent`            | Contract for an event whose propagation can be stopped           |
-| `Stoppable`                 | Trait with a ready-made `StoppableEvent` implementation          |
-| `Subscriber`                | Contract for a class that registers many listeners at once       |
+| `PriorityListenerRegistry`  | In-memory registry; priority-ordered; `listen()` / `subscribe()`                       |
+| `AggregateListenerProvider` | Combines several providers into one                                                    |
+| `HookListenerProvider`      | Bridges events to WordPress `add_action()` hooks                                       |
+| `StoppableEvent`            | Contract for an event whose propagation can be stopped                                 |
+| `Stoppable`                 | Trait with a ready-made `StoppableEvent` implementation                                |
+| `Subscriber`                | Contract for a class that registers many listeners at once                             |

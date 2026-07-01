@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Priority listener provider class.
+ * Priority listener registry class.
  *
  * @author    Justin Tadlock <justintadlock@gmail.com>
  * @copyright Copyright (c) 2026, Justin Tadlock
@@ -20,7 +20,9 @@ use X3P0\Event\ListenerRegistry;
 use X3P0\Event\Subscriber;
 
 /**
- * Listener provider and registry that runs listeners in priority order.
+ * Listener registry that runs listeners in priority order — the writable
+ * provider you register listeners and subscribers on (hence `Registry`, not
+ * `Provider`, unlike the read-only providers alongside it).
  * Listeners are registered against an event type — a class or interface name —
  * and run, lowest priority number first, with ties broken by registration order.
  * An event matches a listener when the event's own class, any parent class, or
@@ -31,7 +33,7 @@ use X3P0\Event\Subscriber;
  * matching listeners at dispatch time, and an `SplObjectStorage` remembers which
  * listeners each subscriber added so `unsubscribe()` can remove them all at once.
  */
-final class PriorityListenerProvider implements ListenerProvider, ListenerRegistry
+final class PriorityListenerRegistry implements ListenerProvider, ListenerRegistry
 {
 	/**
 	 * Stores listeners grouped by event type. Each entry records the callable
