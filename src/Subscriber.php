@@ -26,9 +26,10 @@ interface Subscriber
 	 * Returns a map of event class name to handler, where each handler is
 	 * either the name of a method on this subscriber or an array with a
 	 * `method` key and an optional `priority` key. A lower priority number runs
-	 * earlier; the default is `0` when no priority is given.
+	 * earlier; the default is `0` when no priority is given. The priority may be
+	 * a plain integer or a `ListenerPriority` case.
 	 *
-	 * @return array<class-string, string|array{method: string, priority?: int}>
+	 * @return array<class-string, string|array{method: string, priority?: int|ListenerPriority}>
 	 */
 	public function getSubscribedEvents(): array;
 }

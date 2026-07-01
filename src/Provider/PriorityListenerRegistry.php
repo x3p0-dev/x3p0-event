@@ -17,8 +17,8 @@ use Closure;
 use InvalidArgumentException;
 use LogicException;
 use SplObjectStorage;
-use SplPriorityQueue;
 use X3P0\Event\Listener;
+use X3P0\Event\ListenerPriority;
 use X3P0\Event\ListenerProvider;
 use X3P0\Event\ListenerRegistry;
 use X3P0\Event\NamedEvent;
@@ -36,9 +36,9 @@ use X3P0\Event\Subscriber;
  * type fires for every subtype. A `NamedEvent` additionally matches listeners
  * registered against the string its `eventName()` returns.
  *
- * Two SPL structures do the heavy lifting: an `SplPriorityQueue` orders the
- * matching listeners at dispatch time, and an `SplObjectStorage` remembers which
- * listeners each subscriber added so `unsubscribe()` can remove them all at once.
+ * At dispatch time the matching listeners are sorted, ascending, by priority
+ * and then registration order. An `SplObjectStorage` remembers which listeners
+ * each subscriber added so `unsubscribe()` can remove them all at once.
  */
 final class PriorityListenerRegistry implements ListenerProvider, ListenerRegistry
 {
@@ -89,7 +89,7 @@ final class PriorityListenerRegistry implements ListenerProvider, ListenerRegist
 	 * Registers a listener for the given event type. A lower priority number
 	 * runs earlier; listeners sharing a priority run in registration order.
 	 */
-	public function listen(string $eventType, callable|string $listener, int $priority = 0): void
+	public function listen(string $eventType, callable|string $listener, int|ListenerPriority $priority = 0): void
 	{
 		$this->add($eventType, $this->toCallable($listener), $priority);
 	}
@@ -97,7 +97,7 @@ final class PriorityListenerRegistry implements ListenerProvider, ListenerRegist
 	/**
 	 * @inheritDoc
 	 */
-	public function listenOnce(string $eventType, callable|string $listener, int $priority = 0): void
+	public function listenOnce(string $eventType, callable|string $listener, int|ListenerPriority $priority = 0): void
 	{
 		$this->add(
 			$eventType,
@@ -166,22 +166,27 @@ final class PriorityListenerRegistry implements ListenerProvider, ListenerRegist
 	 */
 	public function getListenersForEvent(object $event): iterable
 	{
-		$queue = new SplPriorityQueue();
+		$matched = [];
 
 		foreach ($this->matchingTypes($event) as $type) {
 			foreach ($this->listeners[$type] ?? [] as $serial => $registered) {
-				// The queue dequeues the highest priority first,
-				// so both values are negated: the lowest priority
-				// number comes out first, and the earliest serial
-				// wins on ties.
-				$queue->insert($registered['callable'], [
-					-$registered['priority'],
-					-$serial
-				]);
+				$matched[] = [
+					'priority' => $registered['priority'],
+					'serial'   => $serial,
+					'callable' => $registered['callable']
+				];
 			}
 		}
 
-		yield from $queue;
+		// Lowest priority number first, ties broken by registration order (the
+		// serial). Both sort ascending, so nothing is negated — which is what
+		// lets `PHP_INT_MIN`/`PHP_INT_MAX` be used as priority bounds safely.
+		usort($matched, static fn (array $a, array $b): int =>
+			[$a['priority'], $a['serial']] <=> [$b['priority'], $b['serial']]);
+
+		foreach ($matched as $entry) {
+			yield $entry['callable'];
+		}
 	}
 
 	/**
@@ -278,15 +283,17 @@ final class PriorityListenerRegistry implements ListenerProvider, ListenerRegist
 	}
 
 	/**
-	 * Stores a listener and returns the serial assigned to it.
+	 * Stores a listener and returns the serial assigned to it. A named
+	 * `ListenerPriority` is resolved to its integer value here, so every caller
+	 * can accept either form.
 	 */
-	private function add(string $eventType, callable $listener, int $priority): int
+	private function add(string $eventType, callable $listener, int|ListenerPriority $priority): int
 	{
 		$serial = $this->serial++;
 
 		$this->listeners[$eventType][$serial] = [
 			'callable' => $listener,
-			'priority' => $priority
+			'priority' => $priority instanceof ListenerPriority ? $priority->toInt() : $priority
 		];
 
 		return $serial;

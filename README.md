@@ -111,6 +111,23 @@ $dispatcher->listen(PostViewed::class, $runsFirst, -10);     // negative runs ea
 $dispatcher->listen(PostViewed::class, $runsLast, 20);       // higher runs later
 ```
 
+For the common cases you can use the `ListenerPriority` enum instead of a bare
+number — the cases name the *order*, not a magnitude, so they read the same way
+the rule does ("lower runs first"):
+
+```php
+use X3P0\Event\ListenerPriority;
+
+$dispatcher->listen(PostViewed::class, $early, ListenerPriority::First);   // before all
+$dispatcher->listen(PostViewed::class, $usual, ListenerPriority::Normal);  // 0 (the default)
+$dispatcher->listen(PostViewed::class, $late,  ListenerPriority::Last);    // after all
+```
+
+`First` and `Last` are the integer extremes, so they run before and after every
+other listener respectively — true bookends. Pass a plain integer for any
+ordering in between; you can mix the two freely. The same values work as a
+subscriber's `priority` and with `listenOnce()`.
+
 ---
 
 ## One-time listeners
@@ -528,6 +545,7 @@ part shares the same listeners.
 | `EventDispatcher`           | Dispatches events; also a `listen()` / `subscribe()` facade                            |
 | `ListenerProvider`          | Contract for "which listeners apply to this event?"                                    |
 | `Listener`                  | Marker for a listener class registerable by name and resolved lazily                   |
+| `ListenerPriority`          | Enum of named priorities (`First` / `Normal` / `Last`) for `listen()`                  |
 | `ListenerRegistry`          | Contract for the write side: `listen()` / `listenOnce()` / `subscribe()` / `subscribeOnce()` / `unsubscribe()` / `forget()` |
 | `PriorityListenerRegistry`  | In-memory registry; priority-ordered; `listen()` / `subscribe()`                       |
 | `AggregateListenerProvider` | Combines several providers into one                                                    |
