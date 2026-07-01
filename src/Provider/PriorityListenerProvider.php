@@ -16,6 +16,7 @@ namespace X3P0\Event\Provider;
 use SplObjectStorage;
 use SplPriorityQueue;
 use X3P0\Event\ListenerProvider;
+use X3P0\Event\ListenerRegistry;
 use X3P0\Event\Subscriber;
 
 /**
@@ -30,7 +31,7 @@ use X3P0\Event\Subscriber;
  * matching listeners at dispatch time, and an `SplObjectStorage` remembers which
  * listeners each subscriber added so `unsubscribe()` can remove them all at once.
  */
-final class PriorityListenerProvider implements ListenerProvider
+final class PriorityListenerProvider implements ListenerProvider, ListenerRegistry
 {
 	/**
 	 * Stores listeners grouped by event type. Each entry records the callable

@@ -1,0 +1,42 @@
+<?php
+
+/**
+ * Listener registry contract.
+ *
+ * @author    Justin Tadlock <justintadlock@gmail.com>
+ * @copyright Copyright (c) 2026, Justin Tadlock
+ * @license   https://www.gnu.org/licenses/gpl-3.0.html GPL-3.0-or-later
+ * @link      https://github.com/x3p0-dev/x3p0-event
+ */
+
+declare(strict_types=1);
+
+namespace X3P0\Event;
+
+/**
+ * Contract for the write side of the listener system: registering listeners and
+ * subscribers, and removing them again. It is the counterpart to the read-only
+ * `ListenerProvider`, which only answers which listeners apply to an event. A
+ * provider may implement both to be the single place listeners are stored, or
+ * just `ListenerProvider` when it sources listeners from elsewhere (such as the
+ * WordPress hook bridge) and accepts no registrations.
+ */
+interface ListenerRegistry
+{
+	/**
+	 * Registers a listener for the given event type. A lower priority number
+	 * runs earlier; listeners sharing a priority run in registration order.
+	 */
+	public function listen(string $eventType, callable $listener, int $priority = 0): void;
+
+	/**
+	 * Registers every listener a subscriber declares, so the whole set can
+	 * be removed together with `unsubscribe()`.
+	 */
+	public function subscribe(Subscriber $subscriber): void;
+
+	/**
+	 * Removes every listener previously registered by the given subscriber.
+	 */
+	public function unsubscribe(Subscriber $subscriber): void;
+}

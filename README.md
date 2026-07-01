@@ -178,6 +178,45 @@ Everything a subscriber registered can be removed in one call:
 
 ---
 
+## Registering through the dispatcher
+
+For convenience, the dispatcher doubles as a facade over its provider — you can
+`listen()`, `subscribe()`, and `unsubscribe()` on it directly, so code that holds
+the dispatcher needn't also hold a reference to the provider:
+
+```php
+$dispatcher = new EventDispatcher(new PriorityListenerProvider());
+
+$dispatcher->listen(PostViewed::class, function (PostViewed $event): void {
+	// …
+});
+
+$dispatcher->subscribe(new AnalyticsSubscriber());
+
+$dispatcher->dispatch(new PostViewed(42));
+```
+
+These delegate to the underlying provider, so they need a provider that accepts
+registrations — one implementing `ListenerRegistry`, such as
+`PriorityListenerProvider`. When the dispatcher wraps an
+`AggregateListenerProvider`, registrations are forwarded to the first child that
+accepts them, so the combined set-up below works the same way. A read-only
+provider (a lone `HookListenerProvider`, say) throws a `LogicException`.
+
+The dispatcher and the provider stay separate types — this is only sugar. You can
+always register on the provider directly, which is the only option when you hold
+a provider but not the dispatcher.
+
+This full surface — dispatch plus the registration facade — is the
+`ListenerAwareDispatcher` interface (a `Dispatcher` that is also a
+`ListenerRegistry`), so type-hint that when you want one object for both jobs.
+Type-hint `Dispatcher` when you only need to fire events, or `ListenerRegistry`
+when you want the listener store itself. The facade methods delegate to the
+backing provider, so they carry its precondition: give the dispatcher a provider
+that accepts registrations, or they throw.
+
+---
+
 ## Where listeners come from: providers
 
 The provider is the part that answers "which listeners apply to this event?"
@@ -325,9 +364,11 @@ part shares the same listeners.
 
 | Class / interface           | Role                                                             |
 |-----------------------------|------------------------------------------------------------------|
-| `Dispatcher`                | Contract for an event dispatcher                                 |
-| `EventDispatcher`           | Dispatches events to their listeners, in the current request     |
+| `Dispatcher`                | Minimal, PSR-14-style contract: just `dispatch()`                |
+| `ListenerAwareDispatcher`   | A `Dispatcher` that is also a `ListenerRegistry`                  |
+| `EventDispatcher`           | Dispatches events; also a `listen()` / `subscribe()` facade       |
 | `ListenerProvider`          | Contract for "which listeners apply to this event?"              |
+| `ListenerRegistry`          | Contract for the write side: `listen()` / `subscribe()` / `unsubscribe()` |
 | `PriorityListenerProvider`  | In-memory registry; priority-ordered; `listen()` / `subscribe()` |
 | `AggregateListenerProvider` | Combines several providers into one                              |
 | `HookListenerProvider`      | Bridges events to WordPress `add_action()` hooks                 |
