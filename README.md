@@ -189,7 +189,7 @@ For convenience, the dispatcher doubles as a facade over its provider — you ca
 the dispatcher needn't also hold a reference to the provider:
 
 ```php
-$dispatcher = new EventDispatcher(new PriorityListenerProvider());
+$dispatcher = new EventDispatcher(); // or pass your own provider
 
 $dispatcher->listen(PostViewed::class, function (PostViewed $event): void {
 	// …
@@ -201,11 +201,13 @@ $dispatcher->dispatch(new PostViewed(42));
 ```
 
 These delegate to the underlying provider, so they need a provider that accepts
-registrations — one implementing `ListenerRegistry`, such as
-`PriorityListenerProvider`. When the dispatcher wraps an
+registrations — one implementing `ListenerRegistry`. The default provider a
+bare `new EventDispatcher()` creates is a `PriorityListenerProvider`, which is
+exactly that, so the facade works out of the box. When the dispatcher wraps an
 `AggregateListenerProvider`, registrations are forwarded to the first child that
-accepts them, so the combined set-up below works the same way. A read-only
-provider (a lone `HookListenerProvider`, say) throws a `LogicException`.
+accepts them, so the combined set-up below works the same way. Only a read-only
+provider you supply deliberately (a lone `HookListenerProvider`, say) makes these
+methods throw a `LogicException`.
 
 The dispatcher and the provider stay separate types — this is only sugar. You can
 always register on the provider directly, which is the only option when you hold
