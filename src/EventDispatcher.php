@@ -83,6 +83,16 @@ final class EventDispatcher implements ListenerAwareDispatcher
 	}
 
 	/**
+	 * Removes listeners for the given event type — a specific one when a
+	 * listener is passed, or all of them when it is omitted — as a facade over
+	 * the listener provider.
+	 */
+	public function forget(string $eventType, ?callable $listener = null): void
+	{
+		$this->registry()->forget($eventType, $listener);
+	}
+
+	/**
 	 * Returns the listener provider as a registry so listeners can be
 	 * registered through it, throwing when the provider is read-only (such
 	 * as a lone hook bridge) and accepts no registrations.

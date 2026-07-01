@@ -39,4 +39,13 @@ interface ListenerRegistry
 	 * Removes every listener previously registered by the given subscriber.
 	 */
 	public function unsubscribe(Subscriber $subscriber): void;
+
+	/**
+	 * Removes listeners registered for the given event type. When a listener is
+	 * given, only listeners equal to it (by identity) are removed; when it is
+	 * omitted, every listener for the type is removed. Listeners added as an
+	 * inline closure can only be removed by passing back the same closure
+	 * instance.
+	 */
+	public function forget(string $eventType, ?callable $listener = null): void;
 }

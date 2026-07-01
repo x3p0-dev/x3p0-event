@@ -115,6 +115,27 @@ final class PriorityListenerProvider implements ListenerProvider, ListenerRegist
 	/**
 	 * @inheritDoc
 	 */
+	public function forget(string $eventType, ?callable $listener = null): void
+	{
+		if (! isset($this->listeners[$eventType])) {
+			return;
+		}
+
+		if ($listener === null) {
+			unset($this->listeners[$eventType]);
+			return;
+		}
+
+		foreach ($this->listeners[$eventType] as $serial => $registered) {
+			if ($registered['callable'] === $listener) {
+				unset($this->listeners[$eventType][$serial]);
+			}
+		}
+	}
+
+	/**
+	 * @inheritDoc
+	 */
 	public function getListenersForEvent(object $event): iterable
 	{
 		$queue = new SplPriorityQueue();

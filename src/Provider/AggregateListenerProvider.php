@@ -83,6 +83,14 @@ final class AggregateListenerProvider implements ListenerProvider, ListenerRegis
 	}
 
 	/**
+	 * @inheritDoc
+	 */
+	public function forget(string $eventType, ?callable $listener = null): void
+	{
+		$this->registry()->forget($eventType, $listener);
+	}
+
+	/**
 	 * Returns the first child provider that accepts registrations, throwing
 	 * when none of them do.
 	 */

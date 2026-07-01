@@ -182,11 +182,32 @@ Everything a subscriber registered can be removed in one call:
 
 ---
 
+## Removing listeners
+
+To drop individual listeners, use `forget()`. Pass the event type and the exact
+listener to remove just that one, or the event type alone to remove every
+listener for it:
+
+```php
+$listener = function (PostViewed $event): void { /* … */ };
+
+$dispatcher->listen(PostViewed::class, $listener);
+
+$dispatcher->forget(PostViewed::class, $listener); // remove that one listener
+$dispatcher->forget(PostViewed::class);            // remove all PostViewed listeners
+```
+
+Listeners are matched by identity, so an inline closure can only be forgotten by
+passing back the same closure instance — keep a reference if you'll need to
+remove it. (Subscribers are removed as a group with `unsubscribe()`, above.)
+
+---
+
 ## Registering through the dispatcher
 
 For convenience, the dispatcher doubles as a facade over its provider — you can
-`listen()`, `subscribe()`, and `unsubscribe()` on it directly, so code that holds
-the dispatcher needn't also hold a reference to the provider:
+`listen()`, `subscribe()`, `unsubscribe()`, and `forget()` on it directly, so
+code that holds the dispatcher needn't also hold a reference to the provider:
 
 ```php
 $dispatcher = new EventDispatcher(); // or pass your own provider
@@ -374,7 +395,7 @@ part shares the same listeners.
 | `ListenerAwareDispatcher`   | A `Dispatcher` that is also a `ListenerRegistry`                  |
 | `EventDispatcher`           | Dispatches events; also a `listen()` / `subscribe()` facade       |
 | `ListenerProvider`          | Contract for "which listeners apply to this event?"              |
-| `ListenerRegistry`          | Contract for the write side: `listen()` / `subscribe()` / `unsubscribe()` |
+| `ListenerRegistry`          | Contract for the write side: `listen()` / `subscribe()` / `unsubscribe()` / `forget()` |
 | `PriorityListenerProvider`  | In-memory registry; priority-ordered; `listen()` / `subscribe()` |
 | `AggregateListenerProvider` | Combines several providers into one                              |
 | `HookListenerProvider`      | Bridges events to WordPress `add_action()` hooks                 |
