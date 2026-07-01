@@ -46,12 +46,12 @@ right listeners.
 ## Quick start
 
 ```php
-use X3P0\Event\Provider\PriorityListenerProvider;
 use X3P0\Event\EventDispatcher;
 
-// 1. Create a provider (holds your listeners) and a dispatcher (fires events).
-$listeners  = new PriorityListenerProvider();
-$dispatcher = new EventDispatcher($listeners);
+// 1. A dispatcher fires events — and lets you register the listeners for them.
+//    With no arguments it sets up its own listener registry, so there's nothing
+//    else to wire. (Pass your own provider when you need to; see below.)
+$dispatcher = new EventDispatcher();
 
 // 2. An event is just a class. Give it whatever data it needs.
 final class PostViewed
@@ -60,7 +60,7 @@ final class PostViewed
 }
 
 // 3. A listener is any callable that accepts the event.
-$listeners->listen(PostViewed::class, function (PostViewed $event): void {
+$dispatcher->listen(PostViewed::class, function (PostViewed $event): void {
 	error_log("Post {$event->postId} was viewed.");
 });
 
@@ -70,6 +70,10 @@ $dispatcher->dispatch(new PostViewed(42));
 
 `dispatch()` returns the same event object it was given, so you can read
 anything the listeners changed on it (see the next section).
+
+The dispatcher's `listen()` / `subscribe()` methods are a convenience facade over
+its provider; you can also register on the provider directly (see
+[Registering through the dispatcher](#registering-through-the-dispatcher)).
 
 ---
 
@@ -85,7 +89,7 @@ final class PriceCalculated
 	public function __construct(public float $price) {}
 }
 
-$listeners->listen(PriceCalculated::class, function (PriceCalculated $event): void {
+$dispatcher->listen(PriceCalculated::class, function (PriceCalculated $event): void {
 	$event->price *= 0.9; // apply a 10% discount
 });
 
@@ -102,9 +106,9 @@ is `0`. Listeners with the same priority run in the order they were added. To ru
 *before* a default listener, use a negative number.
 
 ```php
-$listeners->listen(PostViewed::class, $runsSecond);          // priority 0 (default)
-$listeners->listen(PostViewed::class, $runsFirst, -10);      // negative runs earlier
-$listeners->listen(PostViewed::class, $runsLast, 20);        // higher runs later
+$dispatcher->listen(PostViewed::class, $runsSecond);         // priority 0 (default)
+$dispatcher->listen(PostViewed::class, $runsFirst, -10);     // negative runs earlier
+$dispatcher->listen(PostViewed::class, $runsLast, 20);       // higher runs later
 ```
 
 ---
@@ -126,7 +130,7 @@ final class CommentSubmitted implements StoppableEvent
 	public function __construct(public readonly string $text) {}
 }
 
-$listeners->listen(CommentSubmitted::class, function (CommentSubmitted $event): void {
+$dispatcher->listen(CommentSubmitted::class, function (CommentSubmitted $event): void {
 	if (str_contains($event->text, 'spam')) {
 		$event->stopPropagation(); // later listeners won't run
 	}
@@ -160,7 +164,7 @@ final class AnalyticsSubscriber implements Subscriber
 	public function onComment(CommentSubmitted $event): void { /* … */ }
 }
 
-$listeners->subscribe(new AnalyticsSubscriber());
+$dispatcher->subscribe(new AnalyticsSubscriber());
 ```
 
 **Each method listed is itself a listener** — the subscriber just groups them.
@@ -169,12 +173,12 @@ Remember a listener is any callable, and `[$object, 'method']` is a callable, so
 
 ```php
 $sub = new AnalyticsSubscriber();
-$listeners->listen(PostViewed::class,       [$sub, 'onPostViewed']);    // priority 0 (default)
-$listeners->listen(CommentSubmitted::class, [$sub, 'onComment'], 5);    // priority 5
+$dispatcher->listen(PostViewed::class,       [$sub, 'onPostViewed']);   // priority 0 (default)
+$dispatcher->listen(CommentSubmitted::class, [$sub, 'onComment'], 5);   // priority 5
 ```
 
 Everything a subscriber registered can be removed in one call:
-`$listeners->unsubscribe($subscriber)`.
+`$dispatcher->unsubscribe($subscriber)`.
 
 ---
 

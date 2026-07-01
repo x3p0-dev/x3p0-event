@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace X3P0\Event;
 
 use LogicException;
+use X3P0\Event\Provider\PriorityListenerProvider;
 
 /**
  * Dispatches events synchronously, in process, in the calling request. It asks
@@ -26,9 +27,12 @@ final class EventDispatcher implements ListenerAwareDispatcher
 {
 	/**
 	 * Stores the listener provider that supplies listeners for each event.
+	 * Defaults to a fresh `PriorityListenerProvider`, so a dispatcher built
+	 * without arguments is ready to register listeners on immediately; pass a
+	 * provider explicitly to dispatch from a different or combined source.
 	 */
 	public function __construct(
-		private readonly ListenerProvider $listeners
+		private readonly ListenerProvider $listeners = new PriorityListenerProvider()
 	) {}
 
 	/**
