@@ -521,6 +521,7 @@ part shares the same listeners.
 | `ListenerPriority`          | Enum of named priorities (`First` / `Normal` / `Last`) for `listen()`                  |
 | `ListenerRegistry`          | Contract for the write side: `listen()` / `listenOnce()` / `subscribe()` / `subscribeOnce()` / `unsubscribe()` / `forget()` / `hasListeners()` |
 | `PriorityListenerRegistry`  | In-memory registry; priority-ordered; `listen()` / `subscribe()`                       |
+| `RegistersListeners`        | Trait carrying the registry implementation, for building registry variants             |
 | `AggregateListenerProvider` | Combines several providers into one                                                    |
 | `HookListenerProvider`      | Bridges events to WordPress `add_action()` hooks                                       |
 | `StoppableEvent`            | Contract for an event whose propagation can be stopped                                 |
