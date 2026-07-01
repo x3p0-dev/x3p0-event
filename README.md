@@ -46,12 +46,12 @@ right listeners.
 ## Quick start
 
 ```php
+use X3P0\Event\Provider\PriorityListenerRegistry;
 use X3P0\Event\EventDispatcher;
 
-// 1. A dispatcher fires events — and lets you register the listeners for them.
-// With no arguments it sets up its own listener registry, so there's nothing
-// else to wire. (Pass your own provider when you need to; see below.)
-$dispatcher = new EventDispatcher();
+// 1. A registry holds your listeners; a dispatcher fires events at them.
+$listeners  = new PriorityListenerRegistry();
+$dispatcher = new EventDispatcher($listeners);
 
 // 2. An event is just a class. Give it whatever data it needs.
 final class PostViewed
@@ -59,21 +59,21 @@ final class PostViewed
 	public function __construct(public readonly int $postId) {}
 }
 
-// 3. A listener is any callable that accepts the event.
-$dispatcher->listen(PostViewed::class, function (PostViewed $event): void {
+// 3. A listener is any callable that accepts the event. Register it on the registry.
+$listeners->listen(PostViewed::class, function (PostViewed $event): void {
 	error_log("Post {$event->postId} was viewed.");
 });
 
-// 4. Dispatch the event wherever it happens.
+// 4. Dispatch the event, through the dispatcher, wherever it happens.
 $dispatcher->dispatch(new PostViewed(42));
 ```
 
 `dispatch()` returns the same event object it was given, so you can read
 anything the listeners changed on it (see the next section).
 
-The dispatcher's `listen()` / `subscribe()` methods are a convenience facade over
-its provider; you can also register on the provider directly (see
-[Registering through the dispatcher](#registering-through-the-dispatcher)).
+The two objects have distinct jobs: you **register** listeners on the registry
+(`$listeners`) and **fire** events through the dispatcher (`$dispatcher`). Keep
+one of each for your whole plugin so every part shares the same listeners.
 
 ---
 
@@ -89,7 +89,7 @@ final class PriceCalculated
 	public function __construct(public float $price) {}
 }
 
-$dispatcher->listen(PriceCalculated::class, function (PriceCalculated $event): void {
+$listeners->listen(PriceCalculated::class, function (PriceCalculated $event): void {
 	$event->price *= 0.9; // apply a 10% discount
 });
 
@@ -106,9 +106,9 @@ is `0`. Listeners with the same priority run in the order they were added. To ru
 *before* a default listener, use a negative number.
 
 ```php
-$dispatcher->listen(PostViewed::class, $runsSecond);         // priority 0 (default)
-$dispatcher->listen(PostViewed::class, $runsFirst, -10);     // negative runs earlier
-$dispatcher->listen(PostViewed::class, $runsLast, 20);       // higher runs later
+$listeners->listen(PostViewed::class, $runsSecond);         // priority 0 (default)
+$listeners->listen(PostViewed::class, $runsFirst, -10);     // negative runs earlier
+$listeners->listen(PostViewed::class, $runsLast, 20);       // higher runs later
 ```
 
 For the common cases you can use the `ListenerPriority` enum instead of a bare
@@ -118,9 +118,9 @@ the rule does ("lower runs first"):
 ```php
 use X3P0\Event\ListenerPriority;
 
-$dispatcher->listen(PostViewed::class, $early, ListenerPriority::First);   // before all
-$dispatcher->listen(PostViewed::class, $usual, ListenerPriority::Normal);  // 0 (the default)
-$dispatcher->listen(PostViewed::class, $late,  ListenerPriority::Last);    // after all
+$listeners->listen(PostViewed::class, $early, ListenerPriority::First);   // before all
+$listeners->listen(PostViewed::class, $usual, ListenerPriority::Normal);  // 0 (the default)
+$listeners->listen(PostViewed::class, $late,  ListenerPriority::Last);    // after all
 ```
 
 `First` and `Last` are the integer extremes, so they run before and after every
@@ -137,7 +137,7 @@ then removes itself — handy for one-shot work that should react to an event bu
 never again:
 
 ```php
-$dispatcher->listenOnce(BootCompleted::class, function (BootCompleted $event): void {
+$listeners->listenOnce(BootCompleted::class, function (BootCompleted $event): void {
 	// runs on the first BootCompleted, then unregisters itself
 });
 ```
@@ -165,7 +165,7 @@ final class CommentSubmitted implements StoppableEvent
 	public function __construct(public readonly string $text) {}
 }
 
-$dispatcher->listen(CommentSubmitted::class, function (CommentSubmitted $event): void {
+$listeners->listen(CommentSubmitted::class, function (CommentSubmitted $event): void {
 	if (str_contains($event->text, 'spam')) {
 		$event->stopPropagation(); // later listeners won't run
 	}
@@ -199,8 +199,8 @@ final class OrderPlaced implements NamedEvent
 Now the event matches listeners registered under either key:
 
 ```php
-$dispatcher->listen(OrderPlaced::class, $byClass);   // by class, as always
-$dispatcher->listen(OrderPlaced::NAME,  $byName);    // by name ('order.placed')
+$listeners->listen(OrderPlaced::class, $byClass);   // by class, as always
+$listeners->listen(OrderPlaced::NAME,  $byName);    // by name ('order.placed')
 
 $dispatcher->dispatch(new OrderPlaced(42));          // both listeners run
 ```
@@ -226,7 +226,7 @@ final class NotifyWarehouse
 	public function __invoke(OrderPlaced $event): void { /* … */ }
 }
 
-$dispatcher->listen(OrderPlaced::class, new NotifyWarehouse());
+$listeners->listen(OrderPlaced::class, new NotifyWarehouse());
 ```
 
 If you'd rather register it by **class name** and have it built only when the
@@ -240,7 +240,7 @@ final class NotifyWarehouse implements Listener
 	public function __invoke(OrderPlaced $event): void { /* … */ }
 }
 
-$dispatcher->listen(OrderPlaced::class, NotifyWarehouse::class);   // resolved lazily
+$listeners->listen(OrderPlaced::class, NotifyWarehouse::class);   // resolved lazily
 ```
 
 `Listener` is a marker (it declares no method) so your `__invoke()` keeps its
@@ -287,7 +287,7 @@ final class AnalyticsSubscriber implements Subscriber
 	public function onComment(CommentSubmitted $event): void { /* … */ }
 }
 
-$dispatcher->subscribe(new AnalyticsSubscriber());
+$listeners->subscribe(new AnalyticsSubscriber());
 ```
 
 **Each method listed is itself a listener** — the subscriber just groups them.
@@ -296,19 +296,19 @@ Remember a listener is any callable, and `[$object, 'method']` is a callable, so
 
 ```php
 $sub = new AnalyticsSubscriber();
-$dispatcher->listen(PostViewed::class,       [$sub, 'onPostViewed']);   // priority 0 (default)
-$dispatcher->listen(CommentSubmitted::class, [$sub, 'onComment'], 5);   // priority 5
+$listeners->listen(PostViewed::class,       [$sub, 'onPostViewed']);   // priority 0 (default)
+$listeners->listen(CommentSubmitted::class, [$sub, 'onComment'], 5);   // priority 5
 ```
 
 Everything a subscriber registered can be removed in one call:
-`$dispatcher->unsubscribe($subscriber)`.
+`$listeners->unsubscribe($subscriber)`.
 
 To register a subscriber whose listeners each fire **at most once**, use
 `subscribeOnce()`. Every declared handler removes itself after it runs, and they
 are independent — one firing doesn't disarm the others:
 
 ```php
-$dispatcher->subscribeOnce(new AnalyticsSubscriber());
+$listeners->subscribeOnce(new AnalyticsSubscriber());
 ```
 
 You can still remove the whole set early with `unsubscribe()` before any of them
@@ -325,10 +325,10 @@ listener for it:
 ```php
 $listener = function (PostViewed $event): void { /* … */ };
 
-$dispatcher->listen(PostViewed::class, $listener);
+$listeners->listen(PostViewed::class, $listener);
 
-$dispatcher->forget(PostViewed::class, $listener); // remove that one listener
-$dispatcher->forget(PostViewed::class);            // remove all PostViewed listeners
+$listeners->forget(PostViewed::class, $listener); // remove that one listener
+$listeners->forget(PostViewed::class);            // remove all PostViewed listeners
 ```
 
 Listeners are matched by identity, so an inline closure can only be forgotten by
@@ -344,7 +344,7 @@ useful for skipping work, like building an expensive event, when nothing is
 listening:
 
 ```php
-if ($dispatcher->hasListeners(ReportGenerated::class)) {
+if ($listeners->hasListeners(ReportGenerated::class)) {
 	$dispatcher->dispatch(new ReportGenerated($this->buildExpensiveReport()));
 }
 ```
@@ -353,51 +353,6 @@ It respects the same matching as dispatch, so a listener registered against a
 base class or interface counts for its subtypes. Pass a named event's name to
 check listeners registered under that name. (It reflects listeners on the
 registry, not the WordPress hook bridge — for that, use `has_action()`.)
-
----
-
-## Registering through the dispatcher
-
-For convenience, the dispatcher doubles as a facade over its provider — you can
-`listen()`, `listenOnce()`, `subscribe()`, `subscribeOnce()`, `unsubscribe()`,
-`forget()`, and `hasListeners()` on it directly, so
-code that holds the dispatcher needn't also hold a reference to the provider:
-
-```php
-$dispatcher = new EventDispatcher(); // or pass your own provider
-
-$dispatcher->listen(PostViewed::class, function (PostViewed $event): void {
-	// …
-});
-
-$dispatcher->subscribe(new AnalyticsSubscriber());
-
-$dispatcher->dispatch(new PostViewed(42));
-```
-
-These delegate to the underlying provider, so they need a provider that accepts
-registrations — one implementing `ListenerRegistry`. The default provider a
-bare `new EventDispatcher()` creates is a `PriorityListenerRegistry`, which is
-exactly that, so the facade works out of the box. It also works when you pass a
-registry provider yourself (`new EventDispatcher(new PriorityListenerRegistry())`).
-
-The facade throws a `LogicException` when the dispatcher's provider does *not*
-accept registrations — a lone `HookListenerProvider`, or an
-`AggregateListenerProvider` (which is read-only; see below). In the combined
-set-up, register on the concrete `PriorityListenerRegistry` directly rather than
-through the dispatcher.
-
-The dispatcher and the provider stay separate types — this is only sugar. You can
-always register on the provider directly, which is the only option when you hold
-a provider but not the dispatcher.
-
-This full surface — dispatch plus the registration facade — is the
-`ListenerAwareDispatcher` interface (a `Dispatcher` that is also a
-`ListenerRegistry`), so type-hint that when you want one object for both jobs.
-Type-hint `Dispatcher` when you only need to fire events, or `ListenerRegistry`
-when you want the listener store itself. The facade methods delegate to the
-backing provider, so they carry its precondition: give the dispatcher a provider
-that accepts registrations, or they throw.
 
 ---
 
@@ -559,9 +514,8 @@ part shares the same listeners.
 
 | Class / interface           | Role                                                                                   |
 |-----------------------------|----------------------------------------------------------------------------------------|
-| `Dispatcher`                | Minimal, PSR-14-style contract: just `dispatch()`                                      |
-| `ListenerAwareDispatcher`   | A `Dispatcher` that is also a `ListenerRegistry`                                       |
-| `EventDispatcher`           | Dispatches events; also a `listen()` / `subscribe()` facade                            |
+| `Dispatcher`                | PSR-14-style contract: just `dispatch()`                                               |
+| `EventDispatcher`           | Dispatches events to their listeners, in the current request                           |
 | `ListenerProvider`          | Contract for "which listeners apply to this event?"                                    |
 | `Listener`                  | Marker for a listener class registerable by name and resolved lazily                   |
 | `ListenerPriority`          | Enum of named priorities (`First` / `Normal` / `Last`) for `listen()`                  |
