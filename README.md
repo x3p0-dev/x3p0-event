@@ -378,9 +378,35 @@ $listeners->forget(PostViewed::class, $listener); // remove that one listener
 $listeners->forget(PostViewed::class);            // remove all PostViewed listeners
 ```
 
-Listeners are matched by identity, so an inline closure can only be forgotten by
-passing back the same closure instance — keep a reference if you'll need to
-remove it. (Subscribers are removed as a group with `unsubscribe()`, above.)
+Listeners are matched by identity, so with `forget()` an inline closure can only
+be removed by passing back the same closure instance. (Subscribers are removed as
+a group with `unsubscribe()`, above.)
+
+### By handle
+
+Every `listen()` call — and `listenTo()`, `listenOnce()`, `listenOnceTo()` —
+returns a `ListenerId`, an opaque handle to that one registration. Pass it to
+`forgetId()` to remove exactly that listener, no event type or closure reference
+required:
+
+```php
+$id = $listeners->listen(PostViewed::class, function (PostViewed $event): void { /* … */ });
+
+$listeners->forgetId($id); // removes that listener, and only that one
+```
+
+This is the clean way to drop an inline closure — you keep the tiny handle
+instead of the closure itself. It works the same for a once-only listener, so you
+can cancel one before it ever fires:
+
+```php
+$id = $listeners->listenOnceTo(function (BootCompleted $event): void { /* … */ });
+
+$listeners->forgetId($id); // it will now never run
+```
+
+Treat the handle as opaque: hold it and hand it back, nothing more. Removing an
+unknown or already-removed handle does nothing.
 
 ---
 
@@ -567,7 +593,8 @@ part shares the same listeners.
 | `ListenerProvider`          | Contract for "which listeners apply to this event?"                                    |
 | `Listener`                  | Marker for a listener class registerable by name and resolved lazily                   |
 | `ListenerPriority`          | Enum of named priorities (`First` / `Normal` / `Last`) for `listen()`                  |
-| `ListenerRegistry`          | Contract for the write side: `listen()` / `listenTo()` / `listenOnce()` / `listenOnceTo()` / `subscribe()` / `subscribeOnce()` / `unsubscribe()` / `forget()` / `hasListeners()` |
+| `ListenerRegistry`          | Contract for the write side: `listen()` / `listenTo()` / `listenOnce()` / `listenOnceTo()` / `subscribe()` / `subscribeOnce()` / `unsubscribe()` / `forget()` / `forgetId()` / `hasListeners()` |
+| `ListenerId`                | Opaque handle to one registration, returned by `listen()` and removed with `forgetId()` |
 | `PriorityRegistry`  | In-memory registry; priority-ordered; `listen()` / `subscribe()`                       |
 | `RegistersListeners`        | Trait carrying the registry implementation, for building registry variants             |
 | `AggregateProvider` | Combines several providers into one                                                    |

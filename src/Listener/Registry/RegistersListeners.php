@@ -20,6 +20,7 @@ use ReflectionNamedType;
 use SplObjectStorage;
 use X3P0\Event\InvalidListener;
 use X3P0\Event\Listener\Listener;
+use X3P0\Event\Listener\ListenerId;
 use X3P0\Event\Listener\ListenerPriority;
 use X3P0\Event\Listener\Subscriber;
 use X3P0\Event\NamedEvent;
@@ -95,29 +96,30 @@ trait RegistersListeners
 	 * Registers a listener for the given event type. A lower priority number
 	 * runs earlier; listeners sharing a priority run in registration order.
 	 */
-	public function listen(string $eventType, callable|string $listener, int|ListenerPriority $priority = 0): void
+	public function listen(string $eventType, callable|string $listener, int|ListenerPriority $priority = 0): ListenerId
 	{
-		$this->add($eventType, $this->toCallable($listener), $priority);
+		return new ListenerId($eventType, $this->add($eventType, $this->toCallable($listener), $priority));
 	}
 
 	/**
 	 * @inheritDoc
 	 * @throws ReflectionException
 	 */
-	public function listenTo(callable $listener, int|ListenerPriority $priority = 0): void
+	public function listenTo(callable $listener, int|ListenerPriority $priority = 0): ListenerId
 	{
-		$this->add($this->deriveEventType($listener), $listener, $priority);
+		$eventType = $this->deriveEventType($listener);
+
+		return new ListenerId($eventType, $this->add($eventType, $listener, $priority));
 	}
 
 	/**
 	 * @inheritDoc
 	 */
-	public function listenOnce(string $eventType, callable|string $listener, int|ListenerPriority $priority = 0): void
+	public function listenOnce(string $eventType, callable|string $listener, int|ListenerPriority $priority = 0): ListenerId
 	{
-		$this->add(
+		return new ListenerId(
 			$eventType,
-			$this->onceListener($eventType, $this->toCallable($listener)),
-			$priority
+			$this->add($eventType, $this->onceListener($eventType, $this->toCallable($listener)), $priority)
 		);
 	}
 
@@ -125,14 +127,13 @@ trait RegistersListeners
 	 * @inheritDoc
 	 * @throws ReflectionException
 	 */
-	public function listenOnceTo(callable $listener, int|ListenerPriority $priority = 0): void
+	public function listenOnceTo(callable $listener, int|ListenerPriority $priority = 0): ListenerId
 	{
 		$eventType = $this->deriveEventType($listener);
 
-		$this->add(
+		return new ListenerId(
 			$eventType,
-			$this->onceListener($eventType, $listener),
-			$priority
+			$this->add($eventType, $this->onceListener($eventType, $listener), $priority)
 		);
 	}
 
@@ -155,6 +156,14 @@ trait RegistersListeners
 				unset($this->listeners[$eventType][$serial]);
 			}
 		}
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public function forgetId(ListenerId $id): void
+	{
+		unset($this->listeners[$id->eventType][$id->serial]);
 	}
 
 	/**

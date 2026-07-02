@@ -30,8 +30,11 @@ interface ListenerRegistry
 	 * when the event first fires. A lower priority number runs earlier;
 	 * listeners sharing a priority run in registration order. The priority
 	 * may be a plain integer or a `ListenerPriority` case.
+	 *
+	 * Returns a `ListenerId` handle to this exact registration; pass it to
+	 * `forgetId()` to remove the listener without holding the callable.
 	 */
-	public function listen(string $eventType, callable|string $listener, int|ListenerPriority $priority = 0): void;
+	public function listen(string $eventType, callable|string $listener, int|ListenerPriority $priority = 0): ListenerId;
 
 	/**
 	 * Registers a listener, deriving the event type from the declared type
@@ -41,32 +44,43 @@ interface ListenerRegistry
 	 * `Listener` class name, a `NamedEvent` name, or an untyped parameter.
 	 * The first parameter must declare a single class or interface type;
 	 * anything else throws, since no event type can be derived from it.
+	 * Returns a `ListenerId` handle, as `listen()` does.
 	 */
-	public function listenTo(callable $listener, int|ListenerPriority $priority = 0): void;
+	public function listenTo(callable $listener, int|ListenerPriority $priority = 0): ListenerId;
 
 	/**
 	 * Registers a listener that runs at most once: it removes itself before
 	 * it is called, so it fires for the first matching event and never
-	 * again. In every other respect it behaves like `listen()`.
+	 * again. In every other respect it behaves like `listen()`, including
+	 * returning a `ListenerId` handle — useful to cancel it before it fires.
 	 */
-	public function listenOnce(string $eventType, callable|string $listener, int|ListenerPriority $priority = 0): void;
+	public function listenOnce(string $eventType, callable|string $listener, int|ListenerPriority $priority = 0): ListenerId;
 
 	/**
 	 * Registers a once-only listener, deriving the event type from its
 	 * first parameter as `listenTo()` does. It combines the two: fires at
 	 * most once, and takes no event-type argument. The same derivation
-	 * rules and restrictions apply.
+	 * rules and restrictions apply, and it returns a `ListenerId` handle.
 	 */
-	public function listenOnceTo(callable $listener, int|ListenerPriority $priority = 0): void;
+	public function listenOnceTo(callable $listener, int|ListenerPriority $priority = 0): ListenerId;
 
 	/**
 	 * Removes listeners registered for the given event type. When a listener
 	 * is given, only listeners equal to it (by identity) are removed; when
 	 * it is omitted, every listener for the type is removed. Listeners added
 	 * as an inline closure can only be removed by passing back the same
-	 * closure instance.
+	 * closure instance — or by handle with `forgetId()`.
 	 */
 	public function forget(string $eventType, ?callable $listener = null): void;
+
+	/**
+	 * Removes the single listener a `ListenerId` refers to — the handle
+	 * returned by `listen()` and its variants. Unlike `forget()`, it needs
+	 * neither the event type nor the callable, so an inline closure can be
+	 * revoked without keeping a reference. An unknown or already-removed
+	 * handle does nothing.
+	 */
+	public function forgetId(ListenerId $id): void;
 
 	/**
 	 * Reports whether any registered listener would match the given event
