@@ -28,8 +28,8 @@ final class PriorityRegistry implements ListenerProvider, ListenerRegistry
 	use RegistersListeners;
 
 	/**
-	 * Sets up the registry, optionally with a resolver used to build listeners
-	 * registered by class name (defaults to `new $class()`).
+	 * Sets up the registry, optionally with a resolver used to build
+	 * listeners registered by class name (defaults to `new $class()`).
 	 *
 	 * @param ?Closure(class-string): object $resolver
 	 */

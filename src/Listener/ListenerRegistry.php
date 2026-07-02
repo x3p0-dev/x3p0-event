@@ -25,23 +25,13 @@ namespace X3P0\Event\Listener;
 interface ListenerRegistry
 {
 	/**
-	 * Registers a listener for the given event type. The listener may be any
-	 * callable, or the class name of a `Listener` to resolve lazily when the
-	 * event first fires. A lower priority number runs earlier; listeners
-	 * sharing a priority run in registration order. The priority may be a plain
-	 * integer or a `ListenerPriority` case.
+	 * Registers a listener for the given event type. The listener may be
+	 * any callable, or the class name of a `Listener` to resolve lazily
+	 * when the event first fires. A lower priority number runs earlier;
+	 * listeners sharing a priority run in registration order. The priority
+	 * may be a plain integer or a `ListenerPriority` case.
 	 */
 	public function listen(string $eventType, callable|string $listener, int|ListenerPriority $priority = 0): void;
-
-	/**
-	 * Reports whether any registered listener would match the given event type —
-	 * its own class or interface, or any parent class or implemented interface.
-	 * Handy for skipping work, such as building an expensive event, when nothing
-	 * is listening. Pass a named event's name to check listeners registered under
-	 * that name. This reflects only listeners on the registry, not the WordPress
-	 * hook bridge.
-	 */
-	public function hasListeners(string $eventType): bool;
 
 	/**
 	 * Registers a listener that runs at most once: it removes itself before
@@ -51,6 +41,25 @@ interface ListenerRegistry
 	public function listenOnce(string $eventType, callable|string $listener, int|ListenerPriority $priority = 0): void;
 
 	/**
+	 * Removes listeners registered for the given event type. When a listener
+	 * is given, only listeners equal to it (by identity) are removed; when
+	 * it is omitted, every listener for the type is removed. Listeners added
+	 * as an inline closure can only be removed by passing back the same
+	 * closure instance.
+	 */
+	public function forget(string $eventType, ?callable $listener = null): void;
+
+	/**
+	 * Reports whether any registered listener would match the given event
+	 * type — its own class or interface, or any parent class or implemented
+	 * interface. Handy for skipping work, such as building an expensive
+	 * event, when nothing is listening. Pass a named event's name to check
+	 * listeners registered under that name. This reflects only listeners on
+	 * the registry, not the WordPress hook bridge.
+	 */
+	public function hasListeners(string $eventType): bool;
+
+	/**
 	 * Registers every listener a subscriber declares, so the whole set can
 	 * be removed together with `unsubscribe()`.
 	 */
@@ -58,9 +67,9 @@ interface ListenerRegistry
 
 	/**
 	 * Registers a subscriber's listeners so each one runs at most once,
-	 * removing itself after it fires. Every declared handler is independent —
-	 * one firing does not remove the others. As with `subscribe()`, the whole
-	 * set can still be removed early with `unsubscribe()`.
+	 * removing itself after it fires. Every declared handler is independent
+	 * — one firing does not remove the others. As with `subscribe()`, the
+	 * whole set can still be removed early with `unsubscribe()`.
 	 */
 	public function subscribeOnce(Subscriber $subscriber): void;
 
@@ -68,13 +77,4 @@ interface ListenerRegistry
 	 * Removes every listener previously registered by the given subscriber.
 	 */
 	public function unsubscribe(Subscriber $subscriber): void;
-
-	/**
-	 * Removes listeners registered for the given event type. When a listener is
-	 * given, only listeners equal to it (by identity) are removed; when it is
-	 * omitted, every listener for the type is removed. Listeners added as an
-	 * inline closure can only be removed by passing back the same closure
-	 * instance.
-	 */
-	public function forget(string $eventType, ?callable $listener = null): void;
 }

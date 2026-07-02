@@ -45,17 +45,17 @@ use X3P0\Event\NotInvokable;
 trait RegistersListeners
 {
 	/**
-	 * Stores listeners grouped by event type. Each entry records the callable
-	 * listener, its priority, and a monotonic serial used to keep registration
-	 * order stable when priorities tie.
+	 * Stores listeners grouped by event type. Each entry records the
+	 * callable listener, its priority, and a monotonic serial used to keep
+	 * registration order stable when priorities tie.
 	 *
 	 * @var array<string, array<int, array{callable: callable, priority: int}>>
 	 */
 	private array $listeners = [];
 
 	/**
-	 * Stores the next serial number, incremented on each registration so every
-	 * listener has a unique, ordered identifier.
+	 * Stores the next serial number, incremented on each registration so
+	 * every listener has a unique, ordered identifier.
 	 */
 	private int $serial = 0;
 
@@ -77,8 +77,8 @@ trait RegistersListeners
 	private readonly ?Closure $resolver;
 
 	/**
-	 * Sets up the subscriber storage and stores the optional listener resolver.
-	 * A using class must call this from its constructor.
+	 * Sets up the subscriber storage and stores the optional listener
+	 * resolver. A using class must call this from its constructor.
 	 *
 	 * @param ?Closure(class-string): object $resolver
 	 */
@@ -110,9 +110,28 @@ trait RegistersListeners
 	}
 
 	/**
-	 * Registers every listener a subscriber declares and remembers them so
-	 * they can be removed together. A handler may be a method name or an
-	 * array with a `method` key and an optional `priority` key.
+	 * @inheritDoc
+	 */
+	public function forget(string $eventType, ?callable $listener = null): void
+	{
+		if (! isset($this->listeners[$eventType])) {
+			return;
+		}
+
+		if ($listener === null) {
+			unset($this->listeners[$eventType]);
+			return;
+		}
+
+		foreach ($this->listeners[$eventType] as $serial => $registered) {
+			if ($registered['callable'] === $listener) {
+				unset($this->listeners[$eventType][$serial]);
+			}
+		}
+	}
+
+	/**
+	 * @inheritDoc
 	 */
 	public function subscribe(Subscriber $subscriber): void
 	{
@@ -146,27 +165,6 @@ trait RegistersListeners
 	/**
 	 * @inheritDoc
 	 */
-	public function forget(string $eventType, ?callable $listener = null): void
-	{
-		if (! isset($this->listeners[$eventType])) {
-			return;
-		}
-
-		if ($listener === null) {
-			unset($this->listeners[$eventType]);
-			return;
-		}
-
-		foreach ($this->listeners[$eventType] as $serial => $registered) {
-			if ($registered['callable'] === $listener) {
-				unset($this->listeners[$eventType][$serial]);
-			}
-		}
-	}
-
-	/**
-	 * @inheritDoc
-	 */
 	public function getListenersForEvent(object $event): iterable
 	{
 		$matched = [];
@@ -181,9 +179,8 @@ trait RegistersListeners
 			}
 		}
 
-		// Lowest priority number first, ties broken by registration order (the
-		// serial). Both sort ascending, so nothing is negated — which is what
-		// lets `PHP_INT_MIN`/`PHP_INT_MAX` be used as priority bounds safely.
+		// Lowest priority number first, ties broken by registration
+		// order (the serial). Both sort ascending.
 		usort($matched, static fn (array $a, array $b): int =>
 			[$a['priority'], $a['serial']] <=> [$b['priority'], $b['serial']]);
 
@@ -237,9 +234,9 @@ trait RegistersListeners
 
 	/**
 	 * Normalizes a registered listener to a callable. A callable is returned
-	 * as-is; a `Listener` class name is turned into a closure that resolves the
-	 * class the first time it runs (lazily, then cached) and invokes it. Any
-	 * other string is rejected.
+	 * as-is; a `Listener` class name is turned into a closure that resolves
+	 * the class the first time it runs (lazily, then cached) and invokes it.
+	 * Any other string is rejected.
 	 */
 	private function toCallable(callable|string $listener): callable
 	{
