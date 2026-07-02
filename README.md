@@ -388,7 +388,7 @@ $inMemory = new PriorityListenerRegistry();
 
 $provider = new AggregateListenerProvider(
 	$inMemory,     // PriorityListenerRegistry
-	$fromHooks     // HookListenerProvider (below)
+	$fromHooks     // HookBridgeProvider (below)
 );
 
 $dispatcher = new EventDispatcher($provider);
@@ -397,7 +397,7 @@ $dispatcher = new EventDispatcher($provider);
 $inMemory->listen(PostViewed::class, $listener);
 ```
 
-### `HookListenerProvider` (talk to WordPress hooks)
+### `HookBridgeProvider` (talk to WordPress hooks)
 
 See the next section.
 
@@ -405,7 +405,7 @@ See the next section.
 
 ## Talking to WordPress hooks
 
-This is the part WordPress developers will care about most. `HookListenerProvider`
+This is the part WordPress developers will care about most. `HookBridgeProvider`
 lets **any** code react to your typed events using ordinary `add_action()` — even
 code that has never heard of this library.
 
@@ -413,9 +413,9 @@ By default, it uses the event's class name as the hook tag, so there's nothing t
 configure:
 
 ```php
-use X3P0\Event\Provider\HookListenerProvider;
+use X3P0\Event\Provider\HookBridgeProvider;
 
-$fromHooks = new HookListenerProvider();
+$fromHooks = new HookBridgeProvider();
 ```
 
 The tag is the fully-qualified class name, which is already unique and namespaced
@@ -445,9 +445,9 @@ readable hook name** that survives renaming the class, or to **opt an event out*
 of the bridge entirely by returning an empty string:
 
 ```php
-use X3P0\Event\Provider\HookListenerProvider;
+use X3P0\Event\Provider\HookBridgeProvider;
 
-$fromHooks = new HookListenerProvider(
+$fromHooks = new HookBridgeProvider(
 	fn (object $event): string => match ($event::class) {
 		PostViewed::class       => 'acme/post_viewed',
 		CommentSubmitted::class => 'acme/comment_submitted',
@@ -471,7 +471,7 @@ Under the hood, when the event is dispatched the provider fires
 that tag, in WordPress's own priority order. If the tag is empty or nothing is
 hooked, it costs nothing.
 
-> **Note:** `HookListenerProvider` is the only piece of this library that knows
+> **Note:** `HookBridgeProvider` is the only piece of this library that knows
 > about WordPress. Everything else is plain PHP.
 
 ---
@@ -482,14 +482,14 @@ No service container or framework is required — you wire it up by hand:
 
 ```php
 use X3P0\Event\Provider\AggregateListenerProvider;
-use X3P0\Event\Provider\HookListenerProvider;
+use X3P0\Event\Provider\HookBridgeProvider;
 use X3P0\Event\Provider\PriorityListenerRegistry;
 use X3P0\Event\EventDispatcher;
 
-// Build the providers. HookListenerProvider uses the event class name as the
+// Build the providers. HookBridgeProvider uses the event class name as the
 // hook tag by default; pass a closure if you want to map custom tags.
 $inMemory  = new PriorityListenerRegistry();
-$fromHooks = new HookListenerProvider();
+$fromHooks = new HookBridgeProvider();
 
 // Combine them and create the dispatcher.
 $dispatcher = new EventDispatcher(
@@ -523,7 +523,7 @@ part shares the same listeners.
 | `PriorityListenerRegistry`  | In-memory registry; priority-ordered; `listen()` / `subscribe()`                       |
 | `RegistersListeners`        | Trait carrying the registry implementation, for building registry variants             |
 | `AggregateListenerProvider` | Combines several providers into one                                                    |
-| `HookListenerProvider`      | Bridges events to WordPress `add_action()` hooks                                       |
+| `HookBridgeProvider`      | Bridges events to WordPress `add_action()` hooks                                       |
 | `StoppableEvent`            | Contract for an event whose propagation can be stopped                                 |
 | `Stoppable`                 | Trait with a ready-made `StoppableEvent` implementation                                |
 | `NamedEvent`                | Contract for an event that also matches by a string name                               |

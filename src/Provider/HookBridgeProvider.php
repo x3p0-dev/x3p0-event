@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Hook listener provider class.
+ * Hook bridge provider class.
  *
  * @author    Justin Tadlock <justintadlock@gmail.com>
  * @copyright Copyright (c) 2026, Justin Tadlock
@@ -32,7 +32,7 @@ use X3P0\Event\ListenerProvider;
  * This is the only WordPress-specific provider; the rest of the system has no
  * knowledge of WordPress.
  */
-final class HookListenerProvider implements ListenerProvider
+final class HookBridgeProvider implements ListenerProvider
 {
 	/**
 	 * Stores the closure that maps an event to the hook tag to fire for it.

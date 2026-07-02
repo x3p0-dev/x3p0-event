@@ -22,7 +22,7 @@ use X3P0\Event\ListenerProvider;
  * concern; this class only concatenates, it does not re-sort across providers.
  *
  * This is the composition primitive of the system: pass it, say, the in-memory
- * `PriorityListenerRegistry` together with a `HookListenerProvider`, and the
+ * `PriorityListenerRegistry` together with a `HookBridgeProvider`, and the
  * dispatcher sees a single provider that draws listeners from both sources.
  *
  * It is read-only, mirroring PSR-14's own aggregation model: it combines what
