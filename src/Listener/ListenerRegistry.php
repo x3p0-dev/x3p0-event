@@ -34,11 +34,30 @@ interface ListenerRegistry
 	public function listen(string $eventType, callable|string $listener, int|ListenerPriority $priority = 0): void;
 
 	/**
+	 * Registers a listener, deriving the event type from the declared type
+	 * of its first parameter rather than taking it as an argument — so the
+	 * class you already type-hinted is not repeated. Otherwise, identical
+	 * to `listen()`. Use `listen()` when there is no type to read: a
+	 * `Listener` class name, a `NamedEvent` name, or an untyped parameter.
+	 * The first parameter must declare a single class or interface type;
+	 * anything else throws, since no event type can be derived from it.
+	 */
+	public function listenTo(callable $listener, int|ListenerPriority $priority = 0): void;
+
+	/**
 	 * Registers a listener that runs at most once: it removes itself before
 	 * it is called, so it fires for the first matching event and never
 	 * again. In every other respect it behaves like `listen()`.
 	 */
 	public function listenOnce(string $eventType, callable|string $listener, int|ListenerPriority $priority = 0): void;
+
+	/**
+	 * Registers a once-only listener, deriving the event type from its
+	 * first parameter as `listenTo()` does. It combines the two: fires at
+	 * most once, and takes no event-type argument. The same derivation
+	 * rules and restrictions apply.
+	 */
+	public function listenOnceTo(callable $listener, int|ListenerPriority $priority = 0): void;
 
 	/**
 	 * Removes listeners registered for the given event type. When a listener

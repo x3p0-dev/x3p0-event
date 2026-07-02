@@ -148,6 +148,53 @@ something it calls — dispatches the same event again.
 
 ---
 
+## Inferring the event from the listener
+
+A typed listener already names the event it handles — it's right there in the
+parameter type. `listenTo()` reads it from there, so you don't repeat the class
+you just type-hinted:
+
+```php
+// listen() — the event class is named twice:
+$listeners->listen(PostViewed::class, function (PostViewed $event): void { /* … */ });
+
+// listenTo() — named once, on the parameter:
+$listeners->listenTo(function (PostViewed $event): void { /* … */ });
+```
+
+It's the same registration either way — same storage, same priority ordering,
+same matching — so a `listenTo()` listener typed against a base class or
+interface still fires for every subtype, exactly as with `listen()`. The
+priority argument works the same too, as an integer or a `ListenerPriority`:
+
+```php
+$listeners->listenTo($handler, ListenerPriority::Last);
+```
+
+Any callable works, because the type is read from whichever parameter comes
+first — a closure, an `[$object, 'method']` pair, or an invokable object:
+
+```php
+$listeners->listenTo([$analytics, 'onPostViewed']);
+```
+
+There's a once-only counterpart, `listenOnceTo()`, that combines this with
+`listenOnce()`: the event is inferred *and* the listener removes itself after it
+first runs.
+
+```php
+$listeners->listenOnceTo(function (BootCompleted $event): void { /* … */ });
+```
+
+`listenTo()` needs a type to read, so reach for plain `listen()` when there
+isn't one: a `Listener` class name (resolved lazily, so there's no signature to
+inspect yet), a named event's string key, or a listener whose first parameter is
+untyped. A first parameter that is untyped, a builtin such as `string`, or a
+union type throws `InvalidListener` — it names no single event to register
+against, and guessing would be worse than asking you to say it.
+
+---
+
 ## Stoppable events
 
 Sometimes one listener should be able to stop the rest from running. Make the
@@ -520,7 +567,7 @@ part shares the same listeners.
 | `ListenerProvider`          | Contract for "which listeners apply to this event?"                                    |
 | `Listener`                  | Marker for a listener class registerable by name and resolved lazily                   |
 | `ListenerPriority`          | Enum of named priorities (`First` / `Normal` / `Last`) for `listen()`                  |
-| `ListenerRegistry`          | Contract for the write side: `listen()` / `listenOnce()` / `subscribe()` / `subscribeOnce()` / `unsubscribe()` / `forget()` / `hasListeners()` |
+| `ListenerRegistry`          | Contract for the write side: `listen()` / `listenTo()` / `listenOnce()` / `listenOnceTo()` / `subscribe()` / `subscribeOnce()` / `unsubscribe()` / `forget()` / `hasListeners()` |
 | `PriorityRegistry`  | In-memory registry; priority-ordered; `listen()` / `subscribe()`                       |
 | `RegistersListeners`        | Trait carrying the registry implementation, for building registry variants             |
 | `AggregateProvider` | Combines several providers into one                                                    |

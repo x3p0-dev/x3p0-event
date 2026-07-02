@@ -14,6 +14,9 @@ declare(strict_types=1);
 namespace X3P0\Event\Listener\Registry;
 
 use Closure;
+use ReflectionException;
+use ReflectionFunction;
+use ReflectionNamedType;
 use SplObjectStorage;
 use X3P0\Event\InvalidListener;
 use X3P0\Event\Listener\Listener;
@@ -99,12 +102,36 @@ trait RegistersListeners
 
 	/**
 	 * @inheritDoc
+	 * @throws ReflectionException
+	 */
+	public function listenTo(callable $listener, int|ListenerPriority $priority = 0): void
+	{
+		$this->add($this->deriveEventType($listener), $listener, $priority);
+	}
+
+	/**
+	 * @inheritDoc
 	 */
 	public function listenOnce(string $eventType, callable|string $listener, int|ListenerPriority $priority = 0): void
 	{
 		$this->add(
 			$eventType,
 			$this->onceListener($eventType, $this->toCallable($listener)),
+			$priority
+		);
+	}
+
+	/**
+	 * @inheritDoc
+	 * @throws ReflectionException
+	 */
+	public function listenOnceTo(callable $listener, int|ListenerPriority $priority = 0): void
+	{
+		$eventType = $this->deriveEventType($listener);
+
+		$this->add(
+			$eventType,
+			$this->onceListener($eventType, $listener),
 			$priority
 		);
 	}
@@ -256,6 +283,35 @@ trait RegistersListeners
 		}
 
 		return $listener;
+	}
+
+	/**
+	 * Derives the event type a listener handles from the declared type of its
+	 * first parameter, so `listenTo()` callers need not repeat the class they
+	 * already type-hinted. `Closure::fromCallable()` normalizes every callable
+	 * shape — closure, `[$object, 'method']`, function name, invokable object,
+	 * first-class callable — into one thing to reflect. The parameter must
+	 * declare a single class or interface: a missing, builtin, union, or
+	 * intersection type names no event to register against, so it is rejected
+	 * rather than guessed at.
+	 *
+	 * @return class-string
+	 * @throws ReflectionException
+	 */
+	private function deriveEventType(callable $listener): string
+	{
+		$parameters = (new ReflectionFunction($listener(...)))->getParameters();
+		$type = ($parameters[0] ?? null)?->getType();
+
+		if (! $type instanceof ReflectionNamedType || $type->isBuiltin()) {
+			throw new InvalidListener(
+				'Cannot derive the event type from the listener: its first '
+				. 'parameter must declare a single class or interface type. '
+				. 'Register it with listen($eventType, $listener) instead.'
+			);
+		}
+
+		return $type->getName();
 	}
 
 	/**
