@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace X3P0\Event;
 
+use X3P0\Event\Listener\ListenerProvider;
+
 /**
  * Dispatches events synchronously, in process, in the calling request. It asks
  * the listener provider for the listeners interested in an event and calls each
@@ -21,7 +23,7 @@ namespace X3P0\Event;
  * returned so callers can read whatever the listeners changed on it.
  *
  * Dispatching is its only job: listeners are registered on the provider (a
- * `ListenerRegistry` such as `PriorityListenerRegistry`), not on the dispatcher.
+ * `ListenerRegistry` such as `PriorityRegistry`), not on the dispatcher.
  */
 final class EventDispatcher implements Dispatcher
 {

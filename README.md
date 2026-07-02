@@ -46,11 +46,11 @@ right listeners.
 ## Quick start
 
 ```php
-use X3P0\Event\Provider\PriorityListenerRegistry;
+use X3P0\Event\Listener\Registry\PriorityRegistry;
 use X3P0\Event\EventDispatcher;
 
 // 1. A registry holds your listeners; a dispatcher fires events at them.
-$listeners  = new PriorityListenerRegistry();
+$listeners  = new PriorityRegistry();
 $dispatcher = new EventDispatcher($listeners);
 
 // 2. An event is just a class. Give it whatever data it needs.
@@ -250,9 +250,9 @@ listener class needs no constructor arguments; to resolve listeners that have
 dependencies, give the registry a resolver — for example a container:
 
 ```php
-use X3P0\Event\Provider\PriorityListenerRegistry;
+use X3P0\Event\Listener\Registry\PriorityRegistry;
 
-$registry   = new PriorityListenerRegistry(
+$registry   = new PriorityRegistry(
 	fn (string $class): object => $container->get($class)
 );
 $dispatcher = new EventDispatcher($registry);
@@ -360,21 +360,22 @@ registry, not the WordPress hook bridge — for that, use `has_action()`.)
 
 The provider is the part that answers "which listeners apply to this event?"
 There are three, and you can **combine** them. They all implement the
-`ListenerProvider` interface and live under the `X3P0\Event\Provider` namespace
-(the interface itself sits at the package root).
+`ListenerProvider` interface (which lives at `X3P0\Event\Listener`), and the
+concrete classes sit under `X3P0\Event\Listener\Provider` (read-only providers)
+and `X3P0\Event\Listener\Registry` (writable registries).
 
 The name tells you which way each one goes: a **`…Registry`** is writable — you
 register listeners on it — while a read-only **`…Provider`** only supplies
-listeners it sources elsewhere. So of the three, only `PriorityListenerRegistry`
+listeners it sources elsewhere. So of the three, only `PriorityRegistry`
 accepts registrations.
 
-### `PriorityListenerRegistry` (the default)
+### `PriorityRegistry` (the default)
 
 An in-memory, writable registry. This is what you register listeners and
 subscribers on, with priority ordering. A listener registered against a base
 class or interface also fires for any event that extends or implements it.
 
-### `AggregateListenerProvider` (combine providers)
+### `AggregateProvider` (combine providers)
 
 Wraps several providers and draws listeners from all of them, in the order you
 list them. It is **read-only** — it combines what its children *provide* but
@@ -382,12 +383,12 @@ accepts no registrations itself (mirroring PSR-14's own aggregation model). You
 register on the concrete registry; the aggregate reads through to it.
 
 ```php
-use X3P0\Event\Provider\AggregateListenerProvider;
+use X3P0\Event\Listener\Provider\AggregateProvider;
 
-$inMemory = new PriorityListenerRegistry();
+$inMemory = new PriorityRegistry();
 
-$provider = new AggregateListenerProvider(
-	$inMemory,     // PriorityListenerRegistry
+$provider = new AggregateProvider(
+	$inMemory,     // PriorityRegistry
 	$fromHooks     // HookBridgeProvider (below)
 );
 
@@ -413,7 +414,7 @@ By default, it uses the event's class name as the hook tag, so there's nothing t
 configure:
 
 ```php
-use X3P0\Event\Provider\HookBridgeProvider;
+use X3P0\Event\Listener\Provider\HookBridgeProvider;
 
 $fromHooks = new HookBridgeProvider();
 ```
@@ -423,7 +424,7 @@ for correctly-namespaced code. Combine it with your in-memory provider and
 dispatch as usual:
 
 ```php
-$provider   = new AggregateListenerProvider($inMemory, $fromHooks);
+$provider   = new AggregateProvider($inMemory, $fromHooks);
 $dispatcher = new EventDispatcher($provider);
 
 $dispatcher->dispatch(new PostViewed(42));
@@ -445,7 +446,7 @@ readable hook name** that survives renaming the class, or to **opt an event out*
 of the bridge entirely by returning an empty string:
 
 ```php
-use X3P0\Event\Provider\HookBridgeProvider;
+use X3P0\Event\Listener\Provider\HookBridgeProvider;
 
 $fromHooks = new HookBridgeProvider(
 	fn (object $event): string => match ($event::class) {
@@ -481,19 +482,19 @@ hooked, it costs nothing.
 No service container or framework is required — you wire it up by hand:
 
 ```php
-use X3P0\Event\Provider\AggregateListenerProvider;
-use X3P0\Event\Provider\HookBridgeProvider;
-use X3P0\Event\Provider\PriorityListenerRegistry;
+use X3P0\Event\Listener\Provider\AggregateProvider;
+use X3P0\Event\Listener\Provider\HookBridgeProvider;
+use X3P0\Event\Listener\Registry\PriorityRegistry;
 use X3P0\Event\EventDispatcher;
 
 // Build the providers. HookBridgeProvider uses the event class name as the
 // hook tag by default; pass a closure if you want to map custom tags.
-$inMemory  = new PriorityListenerRegistry();
+$inMemory  = new PriorityRegistry();
 $fromHooks = new HookBridgeProvider();
 
 // Combine them and create the dispatcher.
 $dispatcher = new EventDispatcher(
-	new AggregateListenerProvider($inMemory, $fromHooks)
+	new AggregateProvider($inMemory, $fromHooks)
 );
 
 // Register listeners on the in-memory provider…
@@ -520,9 +521,9 @@ part shares the same listeners.
 | `Listener`                  | Marker for a listener class registerable by name and resolved lazily                   |
 | `ListenerPriority`          | Enum of named priorities (`First` / `Normal` / `Last`) for `listen()`                  |
 | `ListenerRegistry`          | Contract for the write side: `listen()` / `listenOnce()` / `subscribe()` / `subscribeOnce()` / `unsubscribe()` / `forget()` / `hasListeners()` |
-| `PriorityListenerRegistry`  | In-memory registry; priority-ordered; `listen()` / `subscribe()`                       |
+| `PriorityRegistry`  | In-memory registry; priority-ordered; `listen()` / `subscribe()`                       |
 | `RegistersListeners`        | Trait carrying the registry implementation, for building registry variants             |
-| `AggregateListenerProvider` | Combines several providers into one                                                    |
+| `AggregateProvider` | Combines several providers into one                                                    |
 | `HookBridgeProvider`      | Bridges events to WordPress `add_action()` hooks                                       |
 | `StoppableEvent`            | Contract for an event whose propagation can be stopped                                 |
 | `Stoppable`                 | Trait with a ready-made `StoppableEvent` implementation                                |

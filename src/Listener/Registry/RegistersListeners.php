@@ -11,24 +11,24 @@
 
 declare(strict_types=1);
 
-namespace X3P0\Event\Provider;
+namespace X3P0\Event\Listener\Registry;
 
 use Closure;
 use InvalidArgumentException;
 use LogicException;
 use SplObjectStorage;
-use X3P0\Event\Listener;
-use X3P0\Event\ListenerPriority;
+use X3P0\Event\Listener\Listener;
+use X3P0\Event\Listener\ListenerPriority;
+use X3P0\Event\Listener\Subscriber;
 use X3P0\Event\NamedEvent;
-use X3P0\Event\Subscriber;
 
 /**
  * Shared implementation of a priority-ordered listener registry, so registry
  * classes that differ only in how they are constructed can compose it without a
  * shared base class. A using class implements `ListenerProvider` and
  * `ListenerRegistry`, calls `initListenerRegistry()` from its constructor, and
- * gains the full behavior — while staying `final`. `PriorityListenerRegistry`
- * is the built-in user; a framework might add another whose constructor takes a
+ * gains the full behavior — while staying `final`. `PriorityRegistry` is the
+ * built-in user; a framework might add another whose constructor takes a
  * container to resolve class-name listeners.
  *
  * Listeners are registered against an event type — a class or interface name —

@@ -11,10 +11,10 @@
 
 declare(strict_types=1);
 
-namespace X3P0\Event\Provider;
+namespace X3P0\Event\Listener\Provider;
 
 use Closure;
-use X3P0\Event\ListenerProvider;
+use X3P0\Event\Listener\ListenerProvider;
 
 /**
  * Bridges the event system to WordPress's action hooks. For each event it works

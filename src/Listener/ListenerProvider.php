@@ -11,7 +11,7 @@
 
 declare(strict_types=1);
 
-namespace X3P0\Event;
+namespace X3P0\Event\Listener;
 
 /**
  * Contract for the object that maps an event to the listeners interested in it.

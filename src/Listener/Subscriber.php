@@ -11,7 +11,7 @@
 
 declare(strict_types=1);
 
-namespace X3P0\Event;
+namespace X3P0\Event\Listener;
 
 /**
  * Contract for an object that registers several listeners at once. Rather than

@@ -11,7 +11,7 @@
 
 declare(strict_types=1);
 
-namespace X3P0\Event;
+namespace X3P0\Event\Listener;
 
 /**
  * Named presets for the common listener priorities, usable anywhere an integer

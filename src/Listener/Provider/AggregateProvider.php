@@ -11,9 +11,9 @@
 
 declare(strict_types=1);
 
-namespace X3P0\Event\Provider;
+namespace X3P0\Event\Listener\Provider;
 
-use X3P0\Event\ListenerProvider;
+use X3P0\Event\Listener\ListenerProvider;
 
 /**
  * Combines several listener providers into one. For a given event it yields the
@@ -22,16 +22,15 @@ use X3P0\Event\ListenerProvider;
  * concern; this class only concatenates, it does not re-sort across providers.
  *
  * This is the composition primitive of the system: pass it, say, the in-memory
- * `PriorityListenerRegistry` together with a `HookBridgeProvider`, and the
- * dispatcher sees a single provider that draws listeners from both sources.
+ * `PriorityRegistry` together with a `HookBridgeProvider`, and the dispatcher
+ * sees a single provider that draws listeners from both sources.
  *
  * It is read-only, mirroring PSR-14's own aggregation model: it combines what
  * its children *provide* but accepts no registrations of its own. Register
- * listeners on the concrete registry (a `PriorityListenerRegistry`, say) before
- * or after aggregating it — the aggregate reads through to whatever that
- * provider holds.
+ * listeners on the concrete registry (a `PriorityRegistry`, say) before or after
+ * aggregating it — the aggregate reads through to whatever that provider holds.
  */
-final class AggregateListenerProvider implements ListenerProvider
+final class AggregateProvider implements ListenerProvider
 {
 	/**
 	 * Stores the child providers to draw listeners from, in order.

@@ -11,7 +11,7 @@
 
 declare(strict_types=1);
 
-namespace X3P0\Event;
+namespace X3P0\Event\Listener;
 
 /**
  * Marks a class as a listener that can be registered by its class name rather

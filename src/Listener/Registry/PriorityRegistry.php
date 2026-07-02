@@ -11,11 +11,11 @@
 
 declare(strict_types=1);
 
-namespace X3P0\Event\Provider;
+namespace X3P0\Event\Listener\Registry;
 
 use Closure;
-use X3P0\Event\ListenerProvider;
-use X3P0\Event\ListenerRegistry;
+use X3P0\Event\Listener\ListenerProvider;
+use X3P0\Event\Listener\ListenerRegistry;
 
 /**
  * In-memory, writable listener registry that runs listeners in priority order —
@@ -23,7 +23,7 @@ use X3P0\Event\ListenerRegistry;
  * `Provider`, unlike the read-only providers alongside it). The behavior lives
  * in the `RegistersListeners` trait; this class supplies the constructor.
  */
-final class PriorityListenerRegistry implements ListenerProvider, ListenerRegistry
+final class PriorityRegistry implements ListenerProvider, ListenerRegistry
 {
 	use RegistersListeners;
 
