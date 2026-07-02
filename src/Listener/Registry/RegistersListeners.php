@@ -14,13 +14,13 @@ declare(strict_types=1);
 namespace X3P0\Event\Listener\Registry;
 
 use Closure;
-use InvalidArgumentException;
-use LogicException;
 use SplObjectStorage;
+use X3P0\Event\InvalidListener;
 use X3P0\Event\Listener\Listener;
 use X3P0\Event\Listener\ListenerPriority;
 use X3P0\Event\Listener\Subscriber;
 use X3P0\Event\NamedEvent;
+use X3P0\Event\NotInvokable;
 
 /**
  * Shared implementation of a priority-ordered listener registry, so registry
@@ -253,7 +253,7 @@ trait RegistersListeners
 		}
 
 		if (! is_callable($listener)) {
-			throw new InvalidArgumentException(
+			throw new InvalidListener(
 				'Listener must be a callable or the class name of a ' . Listener::class . '.'
 			);
 		}
@@ -273,7 +273,7 @@ trait RegistersListeners
 		$listener = $this->resolver ? ($this->resolver)($class) : new $class();
 
 		if (! is_callable($listener)) {
-			throw new LogicException(
+			throw new NotInvokable(
 				'A ' . Listener::class . ' must be invokable — define an __invoke() method.'
 			);
 		}

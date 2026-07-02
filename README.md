@@ -530,3 +530,6 @@ part shares the same listeners.
 | `NamedEvent`                | Contract for an event that also matches by a string name                               |
 | `Named`                     | Trait implementing `NamedEvent` from a `NAME` class constant                           |
 | `Subscriber`                | Contract for a class that registers many listeners at once                             |
+| `EventException`            | Marker interface implemented by every exception the library throws                     |
+| `InvalidListener`           | Thrown when a listener is neither a callable nor a `Listener` class name (extends `InvalidArgumentException`) |
+| `NotInvokable`              | Thrown when a class-name `Listener` resolves to a non-invokable object (extends `LogicException`) |
